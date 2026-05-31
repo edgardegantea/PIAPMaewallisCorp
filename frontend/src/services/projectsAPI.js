@@ -289,4 +289,102 @@ export const projectsAPI = {
   deleteTemplate:         (id)          => api.delete(`/templates/${id}`),
   saveProjectAsTemplate:  (templateId, projectId) => api.post(`/templates/${templateId}/save-from-project`, { project_id: projectId }),
   createProjectFromTemplate: (templateId, d)      => api.post(`/templates/${templateId}/create-project`, d),
+
+  // Portfolio
+  getPortfolio: () => api.get('/portfolio'),
+
+  // AI
+  getAISummary:  (projectId) => api.post(`/projects/${projectId}/ai-summary`),
+  getAIRisks:    (projectId) => api.post(`/projects/${projectId}/ai-risks`),
+
+  // Analytics
+  getCFD:            (projectId, params) => api.get(`/projects/${projectId}/cfd`, { params }),
+  getLeadTime:       (projectId)         => api.get(`/projects/${projectId}/lead-time`),
+  getRiskMatrix:     (projectId)         => api.get(`/projects/${projectId}/risk-matrix`),
+  getVelocityTrend:  (projectId)         => api.get(`/projects/${projectId}/velocity-trend`),
+  getProfitability:  (projectId)         => api.get(`/projects/${projectId}/profitability`),
+
+  // Invoice
+  getInvoice: (projectId, params) => api.get(`/projects/${projectId}/invoice`, { params }),
+
+  // Labels
+  getLabels:      (projectId)          => api.get(`/projects/${projectId}/labels`),
+  createLabel:    (projectId, d)       => api.post(`/projects/${projectId}/labels`, d),
+  updateLabel:    (id, d)              => api.patch(`/labels/${id}`, d),
+  deleteLabel:    (id)                 => api.delete(`/labels/${id}`),
+  getTaskLabels:  (taskId)             => api.get(`/tasks/${taskId}/labels`),
+  attachLabel:    (taskId, labelId)    => api.post(`/tasks/${taskId}/labels`, { label_id: labelId }),
+  detachLabel:    (taskId, labelId)    => api.delete(`/tasks/${taskId}/labels/${labelId}`),
+
+  // Task Templates
+  getTaskTemplates:    (projectId)     => api.get(`/projects/${projectId}/task-templates`),
+  createTaskTemplate:  (projectId, d)  => api.post(`/projects/${projectId}/task-templates`, d),
+  updateTaskTemplate:  (id, d)         => api.patch(`/task-templates/${id}`, d),
+  deleteTaskTemplate:  (id)            => api.delete(`/task-templates/${id}`),
+  applyTaskTemplate:   (id, d)         => api.post(`/task-templates/${id}/apply`, d),
+
+  // Planning Poker
+  getPokerSessions:  (projectId)  => api.get(`/projects/${projectId}/poker`),
+  createPokerSession:(projectId, d)=> api.post(`/projects/${projectId}/poker`, d),
+  getPokerSession:   (id)          => api.get(`/poker/${id}`),
+  pokerVote:         (id, vote)    => api.post(`/poker/${id}/vote`, { vote }),
+  pokerReveal:       (id)          => api.post(`/poker/${id}/reveal`),
+  pokerClose:        (id, d)       => api.post(`/poker/${id}/close`, d),
+
+  // 2FA
+  get2FASetup:    ()     => api.get('/2fa/setup'),
+  enable2FA:      (code) => api.post('/2fa/enable', { code }),
+  disable2FA:     (code) => api.post('/2fa/disable', { code }),
+  verify2FA:      (code) => api.post('/2fa/verify', { code }),
+
+  // Sessions
+  getSessions:      ()   => api.get('/sessions'),
+  revokeSession:    (id) => api.delete(`/sessions/${id}`),
+  revokeAllSessions:()   => api.delete('/sessions'),
+
+  // Custom Roles
+  getRoles:           ()     => api.get('/roles'),
+  createRole:         (d)    => api.post('/roles', d),
+  updateRole:         (id,d) => api.patch(`/roles/${id}`, d),
+  deleteRole:         (id)   => api.delete(`/roles/${id}`),
+  getRolePermissions: ()     => api.get('/roles/permissions'),
+
+  // OKRs
+  getOKRs:       (params) => api.get('/okrs', { params }),
+  createOKR:     (d)      => api.post('/okrs', d),
+  updateOKR:     (id, d)  => api.patch(`/okrs/${id}`, d),
+  deleteOKR:     (id)     => api.delete(`/okrs/${id}`),
+  createKR:      (okrId, d) => api.post(`/okrs/${okrId}/key-results`, d),
+  updateKR:      (id, d)    => api.patch(`/key-results/${id}`, d),
+  deleteKR:      (id)       => api.delete(`/key-results/${id}`),
+
+  // Capacity planning
+  getCapacity:  (sprintId)    => api.get(`/sprints/${sprintId}/capacity`),
+  saveCapacity: (sprintId, d) => api.put(`/sprints/${sprintId}/capacity`, d),
+
+  // Chat
+  getChat:      (projectId, since) => api.get(`/projects/${projectId}/chat`, { params: since ? { since } : {} }),
+  sendChat:     (projectId, body)  => api.post(`/projects/${projectId}/chat`, { body }),
+  deleteChat:   (id)               => api.delete(`/chat/${id}`),
+
+  // Wiki
+  getWiki:      (projectId)   => api.get(`/projects/${projectId}/wiki`),
+  getWikiPage:  (id)          => api.get(`/wiki/${id}`),
+  createWikiPage:(projectId,d)=> api.post(`/projects/${projectId}/wiki`, d),
+  updateWikiPage:(id, d)      => api.patch(`/wiki/${id}`, d),
+  deleteWikiPage:(id)         => api.delete(`/wiki/${id}`),
+
+  // Webhooks
+  getWebhooks:    (params) => api.get('/webhooks', { params }),
+  createWebhook:  (d)      => api.post('/webhooks', d),
+  updateWebhook:  (id, d)  => api.patch(`/webhooks/${id}`, d),
+  deleteWebhook:  (id)     => api.delete(`/webhooks/${id}`),
+  testWebhook:    (id)     => api.post(`/webhooks/${id}/test`),
+
+  // Import
+  importCSV:  (projectId, fd) => api.post(`/projects/${projectId}/import/csv`, fd),
+  importJira: (projectId, fd) => api.post(`/projects/${projectId}/import/jira`, fd),
+
+  // Export
+  getExcelData: (projectId) => api.get(`/projects/${projectId}/export/excel`),
 };

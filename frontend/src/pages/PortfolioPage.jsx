@@ -1,219 +1,97 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import Layout from '../components/Layout';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { projectsAPI } from '../services/projectsAPI';
-import {
-  Briefcase, TrendingUp, AlertTriangle, CheckCircle2,
-  Clock, Users, ChevronRight, RefreshCw, Calendar,
-} from 'lucide-react';
+import Layout from '../components/Layout';
+import { BarChart2, ChevronRight, AlertTriangle, CheckCircle2, Clock, AlertOctagon } from 'lucide-react';
 
-const STATUS_LABELS = {
-  PLANIFICACION: 'Planificación', EJECUCION: 'Ejecución',
-  SEGUIMIENTO: 'Seguimiento', CIERRE: 'Cierre', COMPLETADO: 'Completado', CANCELADO: 'Cancelado',
-};
-
-const RAG_CONFIG = {
-  GREEN: { label: 'En curso', color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800' },
-  AMBER: { label: 'Atención', color: 'bg-amber-400',  text: 'text-amber-700',   bg: 'bg-amber-50 dark:bg-amber-900/20',   border: 'border-amber-200 dark:border-amber-800'   },
-  RED:   { label: 'En riesgo', color: 'bg-red-500',   text: 'text-red-700',     bg: 'bg-red-50 dark:bg-red-900/20',       border: 'border-red-200 dark:border-red-800'       },
-};
-
-function StatCard({ icon: Icon, label, value, sub, color = 'indigo' }) {
-  const colors = {
-    indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600',
-    emerald:'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600',
-    amber:  'bg-amber-100 dark:bg-amber-900/30 text-amber-600',
-    red:    'bg-red-100 dark:bg-red-900/30 text-red-600',
-  };
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[color]}`}>
-        <Icon size={20} />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-        {sub && <p className="text-[10px] text-slate-400">{sub}</p>}
-      </div>
-    </div>
-  );
-}
+const STATUS_DOT = { PLANIFICACION:'bg-blue-400',EJECUCION:'bg-indigo-500',SEGUIMIENTO:'bg-amber-400',CIERRE:'bg-purple-400',COMPLETADO:'bg-emerald-500',CANCELADO:'bg-slate-400' };
+const RAG_CLS    = { RED:'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400', AMBER:'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400', GREEN:'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' };
+const RAG_LBL    = { RED:'En riesgo', AMBER:'Atención', GREEN:'En curso' };
 
 export default function PortfolioPage() {
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [filterRag, setFilterRag] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [loading,  setLoading]  = useState(true);
+  const [sort,     setSort]     = useState('rag');
+  const [ragFilter,setRagFilter]= useState('');
+  const navigate = useNavigate();
 
-  const load = () => {
-    setLoading(true);
-    projectsAPI.getPortfolio()
-      .then((r) => setProjects(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
+  useEffect(() => {
+    projectsAPI.getPortfolio().then(r => setProjects(r.data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  const rows = projects
+    .filter(p => !ragFilter || p.rag === ragFilter)
+    .sort((a,b) => sort==='rag' ? ['RED','AMBER','GREEN'].indexOf(a.rag)-['RED','AMBER','GREEN'].indexOf(b.rag) : sort==='pct' ? (b.completion_pct||0)-(a.completion_pct||0) : a.name.localeCompare(b.name));
 
-  const displayed = projects.filter((p) => {
-    if (filterRag    && p.rag    !== filterRag)    return false;
-    if (filterStatus && p.status !== filterStatus) return false;
-    return true;
-  });
-
-  // Summary stats
-  const total     = projects.length;
-  const active    = projects.filter((p) => p.status === 'EJECUCION').length;
-  const atRisk    = projects.filter((p) => p.rag === 'RED').length;
-  const completed = projects.filter((p) => p.status === 'COMPLETADO').length;
-  const avgCompletion = total
-    ? Math.round(projects.reduce((s, p) => s + (p.completion_pct || 0), 0) / total)
-    : 0;
+  const t = { total:projects.length, red:projects.filter(p=>p.rag==='RED').length, amber:projects.filter(p=>p.rag==='AMBER').length, overdue:projects.reduce((s,p)=>s+(+p.tasks_overdue||0),0) };
 
   return (
     <Layout>
       <div className="p-4 sm:p-6 space-y-5">
-
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <Briefcase size={20} className="text-indigo-500" />
+            <BarChart2 size={20} className="text-indigo-500"/>
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Portfolio de Proyectos</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Vista ejecutiva cross-proyectos</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Vista ejecutiva RAG cross-proyectos</p>
             </div>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualizar
-          </button>
+          <div className="flex gap-2">
+            <select value={sort} onChange={e=>setSort(e.target.value)} className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100">
+              <option value="rag">Semáforo</option><option value="name">Nombre</option><option value="pct">Avance</option>
+            </select>
+            <select value={ragFilter} onChange={e=>setRagFilter(e.target.value)} className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100">
+              <option value="">Todos</option><option value="RED">🔴 Riesgo</option><option value="AMBER">🟡 Atención</option><option value="GREEN">🟢 OK</option>
+            </select>
+          </div>
         </div>
 
-        {/* KPI cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={Briefcase}     label="Proyectos totales"   value={total}          color="indigo" />
-          <StatCard icon={TrendingUp}    label="En ejecución"        value={active}         color="emerald" />
-          <StatCard icon={AlertTriangle} label="En riesgo"           value={atRisk}         color="red" />
-          <StatCard icon={CheckCircle2}  label="Avance promedio"     value={avgCompletion + '%'} color="amber" />
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Semáforo:</span>
-          {['', 'GREEN', 'AMBER', 'RED'].map((rag) => (
-            <button key={rag} onClick={() => setFilterRag(rag)}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors
-                ${filterRag === rag ? 'bg-indigo-600 text-white border-indigo-600'
-                                   : 'border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-indigo-400'}`}>
-              {rag === ''      ? 'Todos'
-               : rag === 'GREEN' ? '🟢 En curso'
-               : rag === 'AMBER' ? '🟡 Atención'
-               :                   '🔴 Riesgo'}
-            </button>
+          {[{icon:BarChart2,label:'Total',value:t.total,c:'text-indigo-500'},{icon:AlertOctagon,label:'En riesgo',value:t.red,c:'text-red-500'},{icon:Clock,label:'Atención',value:t.amber,c:'text-amber-500'},{icon:AlertTriangle,label:'Vencidas',value:t.overdue,c:'text-rose-500'}].map(({icon:I,label,value,c})=>(
+            <div key={label} className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center"><I size={18} className={c}/></div>
+              <div><p className="text-xl font-bold text-slate-800 dark:text-slate-100">{value}</p><p className="text-xs text-slate-500">{label}</p></div>
+            </div>
           ))}
         </div>
 
-        {/* Project grid */}
-        {loading ? (
-          <div className="text-center py-20 text-slate-400">Cargando portfolio…</div>
-        ) : displayed.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">Sin proyectos en este filtro.</div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {displayed.map((p) => {
-              const rag = RAG_CONFIG[p.rag] ?? RAG_CONFIG.GREEN;
-              const daysLeft = p.days_left;
-              const isOverdue = daysLeft !== null && daysLeft < 0;
-
-              return (
-                <Link key={p.id} to={`/projects/${p.id}`}
-                  className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border hover:shadow-md transition-shadow block ${rag.border}`}>
-                  <div className="p-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${rag.color}`} />
-                          <span className="text-xs font-mono text-slate-400">{p.code}</span>
+        {loading ? <div className="text-center py-20 text-slate-400">Cargando…</div> : (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                  <tr>{['Proyecto','RAG','Avance','Tareas','Riesgos','Presupuesto','Días',''].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {rows.map(p=>(
+                    <tr key={p.id} onClick={()=>navigate(`/projects/${p.id}`)} className="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[p.status]||'bg-slate-400'}`}/>
+                          <div><p className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</p><p className="text-[10px] text-slate-400">{p.code} · {p.director_name}</p></div>
                         </div>
-                        <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{p.name}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">{p.director_name}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${rag.bg} ${rag.text}`}>
-                          {rag.label}
-                        </span>
-                        <span className="text-[10px] text-slate-400">{STATUS_LABELS[p.status] ?? p.status}</span>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-                        <span>Avance</span>
-                        <span className="font-semibold">{p.completion_pct}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${
-                          p.completion_pct >= 75 ? 'bg-emerald-500' :
-                          p.completion_pct >= 40 ? 'bg-indigo-500' : 'bg-amber-400'
-                        }`} style={{ width: `${p.completion_pct}%` }} />
-                      </div>
-                    </div>
-
-                    {/* Stats grid */}
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
-                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg py-1.5">
-                        <p className="font-bold text-slate-700 dark:text-slate-200">{p.tasks_total}</p>
-                        <p className="text-slate-400">tareas</p>
-                      </div>
-                      <div className={`rounded-lg py-1.5 ${p.tasks_blocked > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
-                        <p className={`font-bold ${p.tasks_blocked > 0 ? 'text-red-600' : 'text-slate-700 dark:text-slate-200'}`}>{p.tasks_blocked}</p>
-                        <p className="text-slate-400">bloq.</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg py-1.5">
-                        <p className="font-bold text-slate-700 dark:text-slate-200">{p.member_count}</p>
-                        <p className="text-slate-400">miembros</p>
-                      </div>
-                    </div>
-
-                    {/* Alerts */}
-                    <div className="flex flex-wrap gap-2 text-[10px]">
-                      {p.critical_risks > 0 && (
-                        <span className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
-                          ⚠ {p.critical_risks} riesgo{p.critical_risks > 1 ? 's' : ''} crítico{p.critical_risks > 1 ? 's' : ''}
-                        </span>
-                      )}
-                      {p.overdue_milestones > 0 && (
-                        <span className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">
-                          {p.overdue_milestones} hito{p.overdue_milestones > 1 ? 's' : ''} vencido{p.overdue_milestones > 1 ? 's' : ''}
-                        </span>
-                      )}
-                      {p.active_sprint && (
-                        <span className="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full">
-                          🏃 {p.active_sprint}
-                        </span>
-                      )}
-                      {daysLeft !== null && (
-                        <span className={`px-2 py-0.5 rounded-full font-medium ${isOverdue ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
-                          <Calendar size={9} className="inline mr-0.5" />
-                          {isOverdue ? `Vencido ${-daysLeft}d` : `${daysLeft}d restantes`}
-                        </span>
-                      )}
-                      {p.budget_pct !== null && p.budget_pct > 80 && (
-                        <span className={`px-2 py-0.5 rounded-full font-medium ${p.budget_pct > 100 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                          💰 {p.budget_pct}% presupuesto
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-400">
-                    <span>{p.hours_logged > 0 ? `${parseFloat(p.hours_logged).toFixed(0)}h registradas` : 'Sin horas registradas'}</span>
-                    <ChevronRight size={13} />
-                  </div>
-                </Link>
-              );
-            })}
+                      </td>
+                      <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RAG_CLS[p.rag]}`}>{RAG_LBL[p.rag]}</span></td>
+                      <td className="px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-600 rounded-full overflow-hidden"><div className={`h-full rounded-full ${p.completion_pct>=80?'bg-emerald-500':p.completion_pct>=40?'bg-indigo-500':'bg-slate-300'}`} style={{width:`${p.completion_pct}%`}}/></div>
+                          <span className="text-xs text-slate-500 w-8">{p.completion_pct}%</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        <span className="font-medium text-slate-700 dark:text-slate-200">{p.tasks_done}/{p.tasks_total}</span>
+                        {+p.tasks_overdue>0&&<span className="ml-1 text-red-500">+{p.tasks_overdue}v</span>}
+                        {+p.tasks_blocked>0&&<span className="ml-1 text-amber-500">{p.tasks_blocked}b</span>}
+                      </td>
+                      <td className="px-4 py-3">{+p.critical_risks>0?<span className="flex items-center gap-1 text-red-500 text-xs font-semibold"><AlertTriangle size={11}/>{p.critical_risks}</span>:<span className="text-slate-300 text-xs">—</span>}</td>
+                      <td className="px-4 py-3">{p.budget_pct!=null?<span className={`text-xs font-medium ${p.budget_pct>100?'text-red-500':p.budget_pct>80?'text-amber-500':'text-slate-500'}`}>{p.budget_pct}%</span>:<span className="text-slate-300 text-xs">—</span>}</td>
+                      <td className="px-4 py-3">{p.days_left!=null?<span className={`text-xs font-medium ${p.days_left<0?'text-red-500':p.days_left<14?'text-amber-500':'text-slate-500'}`}>{p.days_left<0?`${-p.days_left}d venc.`:`${p.days_left}d`}</span>:<span className="text-slate-300 text-xs">—</span>}</td>
+                      <td className="px-4 py-3"><ChevronRight size={14} className="text-slate-400"/></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

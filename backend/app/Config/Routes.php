@@ -309,6 +309,114 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     // Sprint Retrospectiva
     $routes->get('sprints/(:num)/retro',  'Api\SprintRetrospectiveController::show/$1');
     $routes->put('sprints/(:num)/retro',  'Api\SprintRetrospectiveController::update/$1');
+
+    // ── Portfolio ──────────────────────────────────────────────────────────
+    $routes->get('portfolio', 'Api\PortfolioController::index');
+
+    // ── AI ─────────────────────────────────────────────────────────────────
+    $routes->post('projects/(:num)/ai-summary',  'Api\AIController::summary/$1');
+    $routes->post('projects/(:num)/ai-risks',    'Api\AIController::detectRisks/$1');
+
+    // ── Analytics ──────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/cfd',              'Api\AnalyticsController::cfd/$1');
+    $routes->get('projects/(:num)/lead-time',        'Api\AnalyticsController::leadTime/$1');
+    $routes->get('projects/(:num)/risk-matrix',      'Api\AnalyticsController::riskMatrix/$1');
+    $routes->get('projects/(:num)/velocity-trend',   'Api\AnalyticsController::velocityTrend/$1');
+    $routes->get('projects/(:num)/profitability',    'Api\AnalyticsController::profitability/$1');
+
+    // ── Invoice ────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/invoice', 'Api\InvoiceController::show/$1');
+
+    // ── Labels ─────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/labels',            'Api\LabelsController::index/$1');
+    $routes->post('projects/(:num)/labels',           'Api\LabelsController::create/$1');
+    $routes->patch('labels/(:num)',                   'Api\LabelsController::update/$1');
+    $routes->delete('labels/(:num)',                  'Api\LabelsController::delete/$1');
+    $routes->get('tasks/(:num)/labels',               'Api\LabelsController::taskLabels/$1');
+    $routes->post('tasks/(:num)/labels',              'Api\LabelsController::attach/$1');
+    $routes->delete('tasks/(:num)/labels/(:num)',     'Api\LabelsController::detach/$1/$2');
+
+    // ── Task Templates ─────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/task-templates',           'Api\TaskTemplatesController::index/$1');
+    $routes->post('projects/(:num)/task-templates',          'Api\TaskTemplatesController::create/$1');
+    $routes->patch('task-templates/(:num)',                   'Api\TaskTemplatesController::update/$1');
+    $routes->delete('task-templates/(:num)',                  'Api\TaskTemplatesController::delete/$1');
+    $routes->post('task-templates/(:num)/apply',             'Api\TaskTemplatesController::apply/$1');
+
+    // ── Planning Poker ─────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/poker',       'Api\PlanningPokerController::index/$1');
+    $routes->post('projects/(:num)/poker',      'Api\PlanningPokerController::create/$1');
+    $routes->get('poker/(:num)',                'Api\PlanningPokerController::show/$1');
+    $routes->post('poker/(:num)/vote',          'Api\PlanningPokerController::vote/$1');
+    $routes->post('poker/(:num)/reveal',        'Api\PlanningPokerController::reveal/$1');
+    $routes->post('poker/(:num)/close',         'Api\PlanningPokerController::close/$1');
+
+    // ── 2FA ────────────────────────────────────────────────────────────────
+    $routes->get('2fa/setup',    'Api\TwoFactorController::setup');
+    $routes->post('2fa/enable',  'Api\TwoFactorController::enable');
+    $routes->post('2fa/disable', 'Api\TwoFactorController::disable');
+    $routes->post('2fa/verify',  'Api\TwoFactorController::verify');
+
+    // ── Session history ────────────────────────────────────────────────────
+    $routes->get('sessions',            'Api\SessionsController::index');
+    $routes->delete('sessions/(:num)',  'Api\SessionsController::revoke/$1');
+    $routes->delete('sessions',         'Api\SessionsController::revokeAll');
+
+    // ── Custom Roles ───────────────────────────────────────────────────────
+    $routes->get('roles',            'Api\CustomRolesController::index');
+    $routes->post('roles',           'Api\CustomRolesController::create');
+    $routes->patch('roles/(:num)',   'Api\CustomRolesController::update/$1');
+    $routes->delete('roles/(:num)', 'Api\CustomRolesController::delete/$1');
+    $routes->get('roles/permissions','Api\CustomRolesController::getPermissionKeys');
+
+    // ── OKRs ───────────────────────────────────────────────────────────────
+    $routes->get('okrs',                         'Api\OKRsController::index');
+    $routes->post('okrs',                        'Api\OKRsController::create');
+    $routes->patch('okrs/(:num)',                'Api\OKRsController::update/$1');
+    $routes->delete('okrs/(:num)',               'Api\OKRsController::delete/$1');
+    $routes->get('okrs/(:num)/key-results',      'Api\OKRsController::keyResults/$1');
+    $routes->post('okrs/(:num)/key-results',     'Api\OKRsController::createKR/$1');
+    $routes->patch('key-results/(:num)',         'Api\OKRsController::updateKR/$1');
+    $routes->delete('key-results/(:num)',        'Api\OKRsController::deleteKR/$1');
+
+    // ── Capacity planning ──────────────────────────────────────────────────
+    $routes->get('sprints/(:num)/capacity',    'Api\CapacityController::index/$1');
+    $routes->put('sprints/(:num)/capacity',    'Api\CapacityController::upsert/$1');
+
+    // ── Chat ───────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/chat',        'Api\ChatController::index/$1');
+    $routes->post('projects/(:num)/chat',       'Api\ChatController::create/$1');
+    $routes->delete('chat/(:num)',              'Api\ChatController::delete/$1');
+
+    // ── Wiki ───────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/wiki',        'Api\WikiController::index/$1');
+    $routes->post('projects/(:num)/wiki',       'Api\WikiController::create/$1');
+    $routes->get('wiki/(:num)',                 'Api\WikiController::show/$1');
+    $routes->patch('wiki/(:num)',               'Api\WikiController::update/$1');
+    $routes->delete('wiki/(:num)',              'Api\WikiController::delete/$1');
+
+    // ── Webhooks ───────────────────────────────────────────────────────────
+    $routes->get('webhooks',            'Api\WebhooksController::index');
+    $routes->post('webhooks',           'Api\WebhooksController::create');
+    $routes->patch('webhooks/(:num)',   'Api\WebhooksController::update/$1');
+    $routes->delete('webhooks/(:num)', 'Api\WebhooksController::delete/$1');
+    $routes->post('webhooks/(:num)/test','Api\WebhooksController::test/$1');
+
+    // ── CSV / Jira import ──────────────────────────────────────────────────
+    $routes->post('projects/(:num)/import/csv',  'Api\ImportController::csv/$1');
+    $routes->post('projects/(:num)/import/jira', 'Api\ImportController::jira/$1');
+
+    // ── Excel export ───────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/export/excel', 'Api\ExportController::excel/$1');
+
+    // ── Tech doc extras ────────────────────────────────────────────────────
+    $routes->get('technicaldocs/(:num)/versions',    'Api\TechDocVersionsController::index/$1');
+    $routes->get('technicaldocs/(:num)/comments',    'Api\TechDocCommentsController::index/$1');
+    $routes->post('technicaldocs/(:num)/comments',   'Api\TechDocCommentsController::create/$1');
+    $routes->delete('tech-doc-comments/(:num)',      'Api\TechDocCommentsController::delete/$1');
+    $routes->post('technicaldocs/(:num)/approve',         'Api\TechnicalDocsController::approve/$1');
+    $routes->post('technicaldocs/(:num)/request-review',  'Api\TechnicalDocsController::requestReview/$1');
+    $routes->patch('technicaldocs/(:num)/sort',           'Api\TechnicalDocsController::sort/$1');
 });
 
 // Guest public access (read-only via invite token)

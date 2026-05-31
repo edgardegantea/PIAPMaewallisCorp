@@ -4,9 +4,11 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Libraries\Auth;
+use App\Libraries\EmailService;
 use App\Models\TaskCommentModel;
 use App\Models\TaskModel;
 use CodeIgniter\HTTP\ResponseInterface;
+use Config\Database;
 
 class TaskCommentsController extends BaseController
 {
@@ -53,8 +55,23 @@ class TaskCommentsController extends BaseController
         ]);
 
         $comment = $this->model->findByTask($taskId);
-        // return just the inserted one
         $inserted = array_values(array_filter($comment, fn($c) => (int)$c['id'] === (int)$id))[0] ?? $this->model->find($id);
+
+        // ── Email: notify @mentioned users ──────────────────────────────────────
+        $body = $data['body'] ?? '';
+        if (preg_match_all('/@(\w+)/', $body, $m)) {
+            $db         = Database::connect();
+            $task       = (new TaskModel())->find($taskId);
+            $frontUrl   = env('APP_FRONTEND_URL', 'https://piap.maewalliscorp.org');
+            $taskUrl    = "{$frontUrl}/projects/{$task['sprint_id']}?task={$taskId}";
+            $byName     = Auth::user()['first_name'] . ' ' . Auth::user()['last_name'];
+            foreach (array_unique($m[1]) as $username) {
+                $mentioned = $db->table('users')->where('username', $username)->get()->getRowArray();
+                if ($mentioned && $mentioned['email_notifications'] ?? 1) {
+                    EmailService::mention($mentioned['email'], $mentioned['first_name'], $byName, $task['title'] ?? '', $taskUrl);
+                }
+            }
+        }
 
         return $this->response->setStatusCode(201)->setJSON($inserted);
     }

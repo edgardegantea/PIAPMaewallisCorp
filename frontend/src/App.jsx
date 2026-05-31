@@ -25,6 +25,8 @@ import CalendarPage      from './pages/CalendarPage';
 import AuditPage         from './pages/AuditPage';
 import TemplatesPage     from './pages/TemplatesPage';
 import PortfolioPage     from './pages/PortfolioPage';
+import OKRsPage          from './pages/OKRsPage';
+import RolesPage         from './pages/RolesPage';
 import GuestPage         from './pages/GuestPage';
 import PWAInstallPrompt  from './components/PWAInstallPrompt';
 
@@ -72,6 +74,8 @@ export default function App() {
         <Route path="/templates"  element={<PrivateRoute><TemplatesPage /></PrivateRoute>} />
         <Route path="/audit"      element={<PrivateRoute><AuditPage /></PrivateRoute>} />
         <Route path="/portfolio"  element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />
+        <Route path="/okrs"       element={<PrivateRoute><OKRsPage /></PrivateRoute>} />
+        <Route path="/roles"      element={<PrivateRoute><RolesPage /></PrivateRoute>} />
         <Route path="/guest/:token" element={<GuestPage />} />
 
         {/* 404 */}
