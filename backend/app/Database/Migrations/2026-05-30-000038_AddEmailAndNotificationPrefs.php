@@ -38,7 +38,7 @@ class AddEmailAndNotificationPrefs extends Migration
         foreach ([
             'reminder_at'        => "DATETIME NULL AFTER `due_time`",
             'reminder_sent'      => "TINYINT(1) NOT NULL DEFAULT 0 AFTER `reminder_at`",
-            'recurrence_rule'    => "VARCHAR(50) NULL AFTER `reminder_sent` COMMENT 'DAILY|WEEKLY|BIWEEKLY|MONTHLY'",
+            'recurrence_rule'    => "VARCHAR(50) NULL AFTER `reminder_sent`",
             'recurrence_end'     => "DATE NULL AFTER `recurrence_rule`",
             'recurrence_parent'  => "INT UNSIGNED NULL AFTER `recurrence_end`",
         ] as $col => $def) {
