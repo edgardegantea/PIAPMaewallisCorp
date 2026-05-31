@@ -3,6 +3,7 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use App\Libraries\Auth;
 use App\Libraries\EmailService;
+use App\Libraries\NotificationService;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
 
@@ -28,12 +29,34 @@ class AnnouncementsController extends BaseController
         $db->table('project_announcements')->insert(['project_id'=>$projectId,'author_id'=>Auth::id(),'title'=>$data['title'],'body'=>$data['body'],'pinned'=>$data['pinned']??0,'created_at'=>date('Y-m-d H:i:s'),'updated_at'=>date('Y-m-d H:i:s')]);
         $id = $db->insertID();
 
-        // Email to team members
-        $members = $db->query("SELECT u.email,u.first_name FROM project_members pm JOIN users u ON u.id=pm.user_id WHERE pm.project_id=? AND u.email_notifications=1 AND u.id!=?"  ,[$projectId,Auth::id()])->getResultArray();
+        // Email + notificación a miembros
+        $members = $db->query(
+            "SELECT u.id, u.email, u.first_name, u.email_notifications
+             FROM project_members pm JOIN users u ON u.id=pm.user_id
+             WHERE pm.project_id=? AND u.id!=?",
+            [$projectId, Auth::id()]
+        )->getResultArray();
+
         $frontUrl = env('APP_FRONTEND_URL','https://piap.maewalliscorp.org');
+        $link     = "/projects/{$projectId}?tab=announcements";
+
         foreach ($members as $m) {
-            EmailService::send($m['email'],"[Anuncio] {$data['title']}",
-                "<p>Hola {$m['first_name']},</p><p>Nuevo anuncio en el proyecto:<br><strong>{$data['title']}</strong></p><p>{$data['body']}</p><p><a href='{$frontUrl}'>Ver proyecto</a></p>");
+            // Email
+            if ($m['email_notifications'] ?? 1) {
+                EmailService::send($m['email'], "[Anuncio] {$data['title']}",
+                    "<p>Hola {$m['first_name']},</p><p>Nuevo anuncio:<br><strong>{$data['title']}</strong></p><p>{$data['body']}</p><p><a href='{$frontUrl}{$link}'>Ver anuncio</a></p>");
+            }
+            // Notificación en app
+            NotificationService::notify(
+                (int)$m['id'],
+                'announcement',
+                "📢 Nuevo anuncio: {$data['title']}",
+                mb_substr(strip_tags($data['body'] ?? ''), 0, 200),
+                $link,
+                $projectId,
+                'announcement',
+                $id
+            );
         }
 
         return $this->response->setStatusCode(201)->setJSON($db->table('project_announcements')->where('id',$id)->get()->getRowArray());

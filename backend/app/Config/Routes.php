@@ -180,7 +180,11 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->get('users/(:num)',     'Api\UsersController::show/$1');
 
     // Notificaciones
-    $routes->get('notifications',    'Api\NotificationsController::index');
+    $routes->get('notifications',              'Api\NotificationsController::index');
+    $routes->get('notifications/user',         'Api\NotificationsController::userNotifications');
+    $routes->post('notifications/(:num)/read', 'Api\NotificationsController::markRead/$1');
+    $routes->post('notifications/read-all',    'Api\NotificationsController::markAllRead');
+    $routes->delete('notifications/(:num)',    'Api\NotificationsController::delete/$1');
 
     // Reportes
     $routes->get('reports/overview',        'Api\ReportsController::overview');

@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use App\Libraries\Auth;
 use App\Libraries\EmailService;
+use App\Libraries\NotificationService;
 use App\Models\TaskCommentModel;
 use App\Models\TaskModel;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -57,20 +58,51 @@ class TaskCommentsController extends BaseController
         $comment = $this->model->findByTask($taskId);
         $inserted = array_values(array_filter($comment, fn($c) => (int)$c['id'] === (int)$id))[0] ?? $this->model->find($id);
 
-        // ── Email: notify @mentioned users ──────────────────────────────────────
-        $body = $data['body'] ?? '';
-        if (preg_match_all('/@(\w+)/', $body, $m)) {
-            $db         = Database::connect();
-            $task       = (new TaskModel())->find($taskId);
-            $frontUrl   = env('APP_FRONTEND_URL', 'https://piap.maewalliscorp.org');
-            $taskUrl    = "{$frontUrl}/projects/{$task['sprint_id']}?task={$taskId}";
-            $byName     = Auth::user()['first_name'] . ' ' . Auth::user()['last_name'];
+        // ── Notificaciones de comentario ─────────────────────────────────────
+        $commentBody = $data['body'] ?? '';
+        $task        = (new TaskModel())->find($taskId);
+        $db          = Database::connect();
+        $sprint      = $task ? $db->table('sprints')->select('project_id')->where('id', $task['sprint_id'])->get()->getRowArray() : null;
+        $projectId   = $sprint['project_id'] ?? null;
+        $frontUrl    = env('APP_FRONTEND_URL', 'https://piap.maewalliscorp.org');
+        $taskUrl     = $projectId ? "/projects/{$projectId}?tab=kanban" : '';
+        $actor       = Auth::user();
+        $byName      = trim(($actor['first_name'] ?? '') . ' ' . ($actor['last_name'] ?? ''));
+
+        // 1. Notificar @menciones (email + notificación en app)
+        if (preg_match_all('/@(\w+)/', $commentBody, $m)) {
             foreach (array_unique($m[1]) as $username) {
                 $mentioned = $db->table('users')->where('username', $username)->get()->getRowArray();
-                if ($mentioned && $mentioned['email_notifications'] ?? 1) {
-                    EmailService::mention($mentioned['email'], $mentioned['first_name'], $byName, $task['title'] ?? '', $taskUrl);
+                if ($mentioned) {
+                    // Email
+                    if ($mentioned['email_notifications'] ?? 1) {
+                        EmailService::mention($mentioned['email'], $mentioned['first_name'], $byName, $task['title'] ?? '', "{$frontUrl}{$taskUrl}");
+                    }
+                    // Notificación en app
+                    NotificationService::notify(
+                        (int)$mentioned['id'],
+                        'mention',
+                        "{$byName} te mencionó en \"{$task['title']}\"",
+                        mb_substr(strip_tags($commentBody), 0, 200),
+                        $taskUrl,
+                        $projectId,
+                        'task',
+                        $taskId
+                    );
                 }
             }
+        }
+
+        // 2. Notificar a asignados de la tarea (nuevo comentario)
+        if ($task && $projectId) {
+            NotificationService::notifyTaskAssignees(
+                $taskId,
+                (int)$projectId,
+                'task_comment',
+                "Nuevo comentario en \"{$task['title']}\"",
+                "{$byName}: " . mb_substr(strip_tags($commentBody), 0, 150),
+                $taskUrl
+            );
         }
 
         return $this->response->setStatusCode(201)->setJSON($inserted);

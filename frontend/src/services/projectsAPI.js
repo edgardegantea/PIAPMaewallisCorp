@@ -221,7 +221,11 @@ export const projectsAPI = {
   getDashboard: () => api.get('/dashboard'),
 
   // Notificaciones
-  getNotifications: () => api.get('/notifications'),
+  getNotifications:          ()     => api.get('/notifications'),
+  getUserNotifications:      (page) => api.get('/notifications/user', { params: { page: page ?? 1 } }),
+  markNotificationRead:      (id)   => api.post(`/notifications/${id}/read`),
+  markAllNotificationsRead:  ()     => api.post('/notifications/read-all'),
+  deleteNotification:        (id)   => api.delete(`/notifications/${id}`),
 
   // Reportes
   getReportOverview:   ()       => api.get('/reports/overview'),

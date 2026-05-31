@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\ActivityLogger;
 use App\Libraries\AuditLog;
 use App\Libraries\Auth;
+use App\Libraries\NotificationService;
 use App\Libraries\ProjectGate;
 use App\Models\TaskCommentModel;
 use App\Models\TaskModel;
@@ -187,6 +188,26 @@ class TasksController extends BaseController
         $task             = $this->model->find($id);
         $task['assignees'] = $this->getAssignees((int) $id);
 
+        // Notificar a los asignados
+        if (!empty($assigneeIds)) {
+            $db     = Database::connect();
+            $sprint = $db->table('sprints')->select('project_id')->where('id', $task['sprint_id'] ?? 0)->get()->getRowArray();
+            $pid    = $sprint['project_id'] ?? null;
+            $link   = $pid ? "/projects/{$pid}?tab=kanban" : '';
+            $actor  = Auth::user();
+            $by     = trim(($actor['first_name'] ?? '') . ' ' . ($actor['last_name'] ?? ''));
+            NotificationService::notifyMany(
+                $assigneeIds,
+                'task_assigned',
+                "Te asignaron: {$task['title']}",
+                "Asignado por {$by}",
+                $link,
+                $pid,
+                'task',
+                (int) $id
+            );
+        }
+
         // Activity log
         if (!empty($task['sprint_id'])) {
             $db     = Database::connect();
@@ -247,12 +268,41 @@ class TasksController extends BaseController
 
         $this->model->update($id, $data);
 
+        $prevAssigneeIds = [];
         if ($assigneeIds !== null) {
+            // Capturar assignees anteriores para detectar nuevos
+            $dbA = Database::connect();
+            $prevAssigneeIds = array_column(
+                $dbA->table('task_assignees')->where('task_id', $id)->get()->getResultArray(),
+                'user_id'
+            );
             $this->syncAssignees($id, $assigneeIds);
         }
 
         $after             = $this->model->find($id);
         $after['assignees'] = $this->getAssignees($id);
+
+        // Notificar a nuevos asignados
+        if ($assigneeIds !== null) {
+            $newAssignees = array_diff($assigneeIds, array_map('intval', $prevAssigneeIds));
+            if (!empty($newAssignees)) {
+                $dbN  = Database::connect();
+                $spN  = $dbN->table('sprints')->select('project_id')->where('id', $after['sprint_id'])->get()->getRowArray();
+                $pidN = $spN['project_id'] ?? null;
+                $actor = Auth::user();
+                $by    = trim(($actor['first_name'] ?? '') . ' ' . ($actor['last_name'] ?? ''));
+                NotificationService::notifyMany(
+                    array_values($newAssignees),
+                    'task_assigned',
+                    "Te asignaron: {$after['title']}",
+                    "Asignado por {$by}",
+                    $pidN ? "/projects/{$pidN}?tab=kanban" : '',
+                    $pidN,
+                    'task',
+                    $id
+                );
+            }
+        }
 
         // Log status changes
         if (isset($data['status']) && $data['status'] !== $before['status']) {
@@ -272,6 +322,22 @@ class TasksController extends BaseController
                 ['status' => $before['status']],
                 ['status' => $data['status']]
             );
+
+            // Notificar a asignados del cambio de estado
+            $dbN = Database::connect();
+            $sprintN = $dbN->table('sprints')->select('project_id')->where('id', $after['sprint_id'])->get()->getRowArray();
+            $pidN    = $sprintN['project_id'] ?? null;
+            $linkN   = $pidN ? "/projects/{$pidN}?tab=kanban" : '';
+            $statusLabels = ['PENDIENTE'=>'Pendiente','EN_PROGRESO'=>'En Progreso','BLOQUEADA'=>'Bloqueada','COMPLETADA'=>'Completada'];
+            $newLabel = $statusLabels[$data['status']] ?? $data['status'];
+            NotificationService::notifyTaskAssignees(
+                $id, (int)($pidN ?? 0),
+                'task_status_changed',
+                "Estado: {$newLabel} — {$after['title']}",
+                "La tarea cambió a {$newLabel}",
+                $linkN
+            );
+
         } elseif (!empty(array_diff_key($data, ['assignees' => 1, 'status' => 1]))) {
             // Log general updates (title, description, priority, due_date, etc.)
             AuditLog::record('task', $id, 'updated',

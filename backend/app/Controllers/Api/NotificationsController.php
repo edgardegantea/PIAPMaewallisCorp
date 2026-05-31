@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
@@ -8,11 +7,20 @@ use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
 
 /**
- * Alertas/notificaciones computadas en tiempo real (sin tabla extra).
- * Devuelve los items que requieren atención del usuario actual.
+ * NotificationsController
+ *
+ * GET  /notifications          — alertas del sistema + notificaciones de usuario
+ * GET  /notifications/user     — solo notificaciones de usuario (paginadas)
+ * POST /notifications/:id/read — marcar una como leída
+ * POST /notifications/read-all — marcar todas como leídas
+ * DELETE /notifications/:id    — eliminar una notificación
  */
 class NotificationsController extends BaseController
 {
+    /**
+     * GET /notifications — Devuelve alertas del sistema + resumen de notificaciones de usuario.
+     * Mantiene retrocompatibilidad con el frontend existente.
+     */
     public function index(): ResponseInterface
     {
         $db     = Database::connect();
@@ -20,7 +28,7 @@ class NotificationsController extends BaseController
         $today  = date('Y-m-d');
         $alerts = [];
 
-        // 1. Proyectos vencidos donde soy director o miembro
+        // 1. Proyectos vencidos
         $overdueProjects = $db->query("
             SELECT p.id, p.code, p.name, p.planned_end_date
             FROM projects p
@@ -29,119 +37,162 @@ class NotificationsController extends BaseController
               AND p.planned_end_date < ?
               AND p.status NOT IN ('CIERRE','CANCELADO')
               AND (p.director_id = ? OR pm.user_id = ?)
-            GROUP BY p.id
-            LIMIT 10
+            GROUP BY p.id LIMIT 10
         ", [$userId, $today, $userId, $userId])->getResultArray();
 
         foreach ($overdueProjects as $p) {
-            $alerts[] = [
-                'type'     => 'project_overdue',
-                'severity' => 'error',
-                'title'    => "Proyecto vencido: {$p['code']}",
-                'body'     => "{$p['name']} debía finalizar el {$p['planned_end_date']}",
-                'link'     => "/projects/{$p['id']}",
-            ];
+            $alerts[] = ['type'=>'project_overdue','severity'=>'error',
+                'title'=>"Proyecto vencido: {$p['code']}",
+                'body'=>"{$p['name']} debía finalizar el {$p['planned_end_date']}",
+                'link'=>"/projects/{$p['id']}"];
         }
 
-        // 2. Tareas vencidas asignadas a mí (soporta multi-asignados)
+        // 2. Tareas vencidas asignadas a mí
         $overdueTasks = $db->query("
             SELECT t.id, t.title, t.due_date, s.project_id, p.name as project_name
             FROM tasks t
             JOIN sprints s ON s.id = t.sprint_id
             JOIN projects p ON p.id = s.project_id
-            WHERE EXISTS (
-                SELECT 1 FROM task_assignees ta
-                WHERE ta.task_id = t.id AND ta.user_id = ?
-            )
+            WHERE EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = ?)
               AND t.due_date < ?
               AND t.status != 'COMPLETADA'
             LIMIT 10
         ", [$userId, $today])->getResultArray();
 
         foreach ($overdueTasks as $t) {
-            $alerts[] = [
-                'type'     => 'task_overdue',
-                'severity' => 'warning',
-                'title'    => "Tarea vencida",
-                'body'     => "{$t['title']} — vencida el {$t['due_date']} ({$t['project_name']})",
-                'link'     => "/projects/{$t['project_id']}?tab=kanban",
-            ];
+            $alerts[] = ['type'=>'task_overdue','severity'=>'warning',
+                'title'=>"Tarea vencida",
+                'body'=>"{$t['title']} — vencida el {$t['due_date']} ({$t['project_name']})",
+                'link'=>"/projects/{$t['project_id']}?tab=kanban"];
         }
 
-        // 3. Hitos vencidos en mis proyectos
+        // 3. Hitos vencidos
         $overdueMilestones = $db->query("
             SELECT m.id, m.title, m.due_date, m.project_id, p.name as project_name
             FROM milestones m
             JOIN projects p ON p.id = m.project_id
             LEFT JOIN project_members pm ON pm.project_id = m.project_id AND pm.user_id = ?
-            WHERE m.due_date < ?
-              AND m.is_completed = 0
+            WHERE m.due_date < ? AND m.is_completed = 0
               AND (p.director_id = ? OR pm.user_id = ?)
-            GROUP BY m.id
-            LIMIT 10
+            GROUP BY m.id LIMIT 10
         ", [$userId, $today, $userId, $userId])->getResultArray();
 
         foreach ($overdueMilestones as $m) {
-            $alerts[] = [
-                'type'     => 'milestone_overdue',
-                'severity' => 'warning',
-                'title'    => "Hito vencido",
-                'body'     => "{$m['title']} — vencido el {$m['due_date']} ({$m['project_name']})",
-                'link'     => "/projects/{$m['project_id']}?tab=milestones",
-            ];
+            $alerts[] = ['type'=>'milestone_overdue','severity'=>'warning',
+                'title'=>"Hito vencido",
+                'body'=>"{$m['title']} — vencido el {$m['due_date']} ({$m['project_name']})",
+                'link'=>"/projects/{$m['project_id']}?tab=milestones"];
         }
 
-        // 4. Riesgos críticos sin mitigar en mis proyectos
+        // 4. Riesgos críticos
         $criticalRisks = $db->query("
             SELECT r.id, r.description, r.project_id, p.name as project_name
             FROM risks r
             JOIN projects p ON p.id = r.project_id
             LEFT JOIN project_members pm ON pm.project_id = r.project_id AND pm.user_id = ?
-            WHERE r.probability = 'ALTA'
-              AND r.impact = 'ALTO'
-              AND r.status = 'ACTIVO'
-              AND p.is_active = 1
-              AND (p.director_id = ? OR pm.user_id = ?)
-            GROUP BY r.id
-            LIMIT 5
+            WHERE r.probability='ALTA' AND r.impact='ALTO' AND r.status='ACTIVO'
+              AND p.is_active = 1 AND (p.director_id = ? OR pm.user_id = ?)
+            GROUP BY r.id LIMIT 5
         ", [$userId, $userId, $userId])->getResultArray();
 
         foreach ($criticalRisks as $r) {
-            $alerts[] = [
-                'type'     => 'risk_critical',
-                'severity' => 'error',
-                'title'    => "Riesgo crítico sin mitigar",
-                'body'     => substr($r['description'], 0, 80) . '... (' . $r['project_name'] . ')',
-                'link'     => "/projects/{$r['project_id']}?tab=risks",
-            ];
+            $alerts[] = ['type'=>'risk_critical','severity'=>'error',
+                'title'=>"Riesgo crítico sin mitigar",
+                'body'=>substr($r['description'],0,80).'... ('.$r['project_name'].')',
+                'link'=>"/projects/{$r['project_id']}?tab=risks"];
         }
 
-        // 5. Incidencias críticas abiertas
+        // 5. Incidencias críticas
         $criticalIncidents = $db->query("
-            SELECT i.id, i.title, i.project_id, p.name as project_name, i.created_at
+            SELECT i.id, i.title, i.project_id, p.name as project_name
             FROM incidents i
             JOIN projects p ON p.id = i.project_id
             LEFT JOIN project_members pm ON pm.project_id = i.project_id AND pm.user_id = ?
-            WHERE i.severity = 'CRITICA'
-              AND i.status = 'ABIERTA'
+            WHERE i.severity='CRITICA' AND i.status='ABIERTA'
               AND (p.director_id = ? OR pm.user_id = ?)
-            GROUP BY i.id
-            LIMIT 5
+            GROUP BY i.id LIMIT 5
         ", [$userId, $userId, $userId])->getResultArray();
 
         foreach ($criticalIncidents as $i) {
-            $alerts[] = [
-                'type'     => 'incident_critical',
-                'severity' => 'error',
-                'title'    => "Incidencia crítica abierta",
-                'body'     => "{$i['title']} ({$i['project_name']})",
-                'link'     => "/projects/{$i['project_id']}?tab=incidents",
-            ];
+            $alerts[] = ['type'=>'incident_critical','severity'=>'error',
+                'title'=>"Incidencia crítica abierta",
+                'body'=>"{$i['title']} ({$i['project_name']})",
+                'link'=>"/projects/{$i['project_id']}?tab=incidents"];
         }
 
+        // Contar notificaciones de usuario no leídas
+        $unreadCount = $db->table('user_notifications')
+            ->where('user_id', $userId)->where('is_read', 0)->countAllResults();
+
         return $this->response->setJSON([
-            'count'  => count($alerts),
-            'alerts' => $alerts,
+            'count'        => count($alerts),
+            'alerts'       => $alerts,
+            'unread_user'  => (int) $unreadCount,
         ]);
+    }
+
+    /**
+     * GET /notifications/user — Notificaciones de usuario paginadas
+     */
+    public function userNotifications(): ResponseInterface
+    {
+        $db     = Database::connect();
+        $userId = Auth::id();
+        $page   = (int) ($this->request->getGet('page') ?? 1);
+        $limit  = 20;
+        $offset = ($page - 1) * $limit;
+
+        $rows = $db->table('user_notifications')
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'DESC')
+            ->limit($limit, $offset)
+            ->get()->getResultArray();
+
+        $total   = $db->table('user_notifications')->where('user_id', $userId)->countAllResults();
+        $unread  = $db->table('user_notifications')->where('user_id', $userId)->where('is_read', 0)->countAllResults();
+
+        return $this->response->setJSON([
+            'data'    => $rows,
+            'total'   => (int) $total,
+            'unread'  => (int) $unread,
+            'page'    => $page,
+            'pages'   => (int) ceil($total / $limit),
+        ]);
+    }
+
+    /**
+     * POST /notifications/:id/read
+     */
+    public function markRead(int $id): ResponseInterface
+    {
+        Database::connect()->table('user_notifications')
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->update(['is_read' => 1]);
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * POST /notifications/read-all
+     */
+    public function markAllRead(): ResponseInterface
+    {
+        Database::connect()->table('user_notifications')
+            ->where('user_id', Auth::id())
+            ->where('is_read', 0)
+            ->update(['is_read' => 1]);
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * DELETE /notifications/:id
+     */
+    public function delete(int $id): ResponseInterface
+    {
+        Database::connect()->table('user_notifications')
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->delete();
+        return $this->response->setStatusCode(204)->setBody('');
     }
 }

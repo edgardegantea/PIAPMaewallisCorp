@@ -43,18 +43,23 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen]     = useState(true);
   const [mobileOpen, setMobileOpen]       = useState(false);
   const [notifOpen, setNotifOpen]         = useState(false);
+  const [notifTab, setNotifTab]           = useState('user'); // 'user' | 'alerts'
   const [notifications, setNotifications] = useState([]);
   const [notifCount, setNotifCount]       = useState(0);
   const [bellRinging, setBellRinging]     = useState(false);
+  const [userNotifs, setUserNotifs]       = useState([]);
+  const [userUnread, setUserUnread]       = useState(0);
+  const [loadingUserNotifs, setLoadingUserNotifs] = useState(false);
   const notifRef        = useRef(null);
-  const prevAlertKeys   = useRef(null); // null = first load (no comparison yet)
+  const prevAlertKeys   = useRef(null);
+  const prevUserUnread  = useRef(0);
 
   // Dismissed alert keys (sessionStorage — resets on tab close)
   const [dismissedKeys, setDismissedKeys] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('notif_dismissed') || '[]'); } catch { return []; }
   });
   const getAlertKey = (n) => `${n.type}:${n.body}`;
-  const unreadCount = notifications.filter((n) => !dismissedKeys.includes(getAlertKey(n))).length;
+  const unreadCount = userUnread + notifications.filter((n) => !dismissedKeys.includes(getAlertKey(n))).length;
 
   const [searchQ, setSearchQ]               = useState('');
   const [searchResults, setSearchResults]   = useState(null);
@@ -83,23 +88,19 @@ export default function Layout({ children }) {
   const loadNotifications = useCallback(() => {
     projectsAPI.getNotifications()
       .then((r) => {
-        const newAlerts = r.data.alerts || [];
+        const newAlerts  = r.data.alerts || [];
+        const newUnread  = r.data.unread_user || 0;
 
-        // Compare against last poll to detect truly new alerts
+        // Detectar alertas del sistema nuevas
         if (prevAlertKeys.current !== null) {
           const incoming = newAlerts.filter((n) => !prevAlertKeys.current.has(getAlertKey(n)));
           if (incoming.length > 0) {
-            // Animate bell
             setBellRinging(true);
             setTimeout(() => setBellRinging(false), 1800);
-
-            // Sonner toasts for new alerts (max 3)
             incoming.slice(0, 3).forEach((n) => {
               const toastFn = n.severity === 'error' ? toast.error : toast.warning;
               toastFn(n.title, { description: n.body, duration: 6000 });
             });
-
-            // Native browser notifications (if permission already granted)
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
               incoming.slice(0, 2).forEach((n) => {
                 try { new Notification(n.title, { body: n.body, icon: '/favicon.ico' }); } catch { /* */ }
@@ -108,12 +109,51 @@ export default function Layout({ children }) {
           }
         }
 
+        // Detectar notificaciones de usuario nuevas
+        if (newUnread > prevUserUnread.current && prevUserUnread.current !== null) {
+          const diff = newUnread - prevUserUnread.current;
+          if (diff > 0 && prevUserUnread.current > 0) {
+            setBellRinging(true);
+            setTimeout(() => setBellRinging(false), 1800);
+            toast.info(`${diff} nueva${diff !== 1 ? 's' : ''} notificación${diff !== 1 ? 'es' : ''}`, { duration: 4000 });
+          }
+          // Recargar lista de notificaciones de usuario si el panel está abierto
+          if (notifOpen) loadUserNotifs();
+        }
+
         prevAlertKeys.current = new Set(newAlerts.map(getAlertKey));
+        prevUserUnread.current = newUnread;
         setNotifications(newAlerts);
         setNotifCount(r.data.count || 0);
+        setUserUnread(newUnread);
       })
       .catch(() => {});
+  }, [notifOpen]);
+
+  const loadUserNotifs = useCallback(() => {
+    setLoadingUserNotifs(true);
+    projectsAPI.getUserNotifications()
+      .then(r => { setUserNotifs(r.data.data ?? []); setUserUnread(r.data.unread ?? 0); })
+      .catch(() => {})
+      .finally(() => setLoadingUserNotifs(false));
   }, []);
+
+  const markRead = async (id) => {
+    await projectsAPI.markNotificationRead(id).catch(() => {});
+    setUserNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: '1' } : n));
+    setUserUnread(prev => Math.max(0, prev - 1));
+  };
+
+  const markAllRead = async () => {
+    await projectsAPI.markAllNotificationsRead().catch(() => {});
+    setUserNotifs(prev => prev.map(n => ({ ...n, is_read: '1' })));
+    setUserUnread(0);
+  };
+
+  const deleteNotif = async (id) => {
+    await projectsAPI.deleteNotification(id).catch(() => {});
+    setUserNotifs(prev => prev.filter(n => n.id !== id));
+  };
 
   // Initial load + poll every 30 s
   useEffect(() => {
@@ -431,13 +471,17 @@ export default function Layout({ children }) {
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button onClick={() => {
-                  setNotifOpen(!notifOpen);
+                  const opening = !notifOpen;
+                  setNotifOpen(opening);
                   setBellRinging(false);
-                  // Opening the panel marks all current alerts as seen
-                  if (!notifOpen && notifications.length > 0) {
-                    const keys = notifications.map(getAlertKey);
-                    setDismissedKeys(keys);
-                    try { sessionStorage.setItem('notif_dismissed', JSON.stringify(keys)); } catch { /* */ }
+                  if (opening) {
+                    loadUserNotifs();
+                    // Mark system alerts as seen
+                    if (notifications.length > 0) {
+                      const keys = notifications.map(getAlertKey);
+                      setDismissedKeys(keys);
+                      try { sessionStorage.setItem('notif_dismissed', JSON.stringify(keys)); } catch { /* */ }
+                    }
                   }
                 }}
                 className={[
@@ -463,28 +507,119 @@ export default function Layout({ children }) {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+
+                  {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Notificaciones</span>
-                    <div className="flex items-center gap-2">
-                      {notifCount > 0 && (
-                        <span className="text-xs bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
-                          {notifCount} alerta{notifCount !== 1 ? 's' : ''}
-                        </span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <Bell size={14} className="text-indigo-500" /> Notificaciones
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {userUnread > 0 && (
+                        <button onClick={markAllRead}
+                          className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                          Marcar todas leídas
+                        </button>
                       )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); loadNotifications(); }}
-                        title="Actualizar ahora"
-                        className="p-1 text-slate-400 hover:text-indigo-500 transition-colors rounded">
-                        <Bell size={13} />
+                      <button onClick={(e) => { e.stopPropagation(); loadNotifications(); loadUserNotifs(); }}
+                        title="Actualizar" className="p-1 text-slate-400 hover:text-indigo-500 transition-colors rounded">
+                        <RefreshCw size={12} />
                       </button>
                     </div>
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="text-center py-8 text-slate-400 text-sm">✓ Sin alertas pendientes</div>
-                    ) : (
-                      notifications.map((n, i) => {
+
+                  {/* Tabs */}
+                  <div className="flex border-b border-slate-100 dark:border-slate-700">
+                    {[
+                      { id: 'user',   label: 'Mis notificaciones', count: userUnread },
+                      { id: 'alerts', label: 'Alertas del sistema', count: notifCount },
+                    ].map(t => (
+                      <button key={t.id} onClick={() => setNotifTab(t.id)}
+                        className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5
+                          ${notifTab === t.id ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                        {t.label}
+                        {t.count > 0 && (
+                          <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                            {t.count > 9 ? '9+' : t.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Panel — User notifications */}
+                  {notifTab === 'user' && (
+                    <div className="max-h-80 overflow-y-auto">
+                      {loadingUserNotifs ? (
+                        <div className="text-center py-8 text-slate-400 text-xs">Cargando…</div>
+                      ) : userNotifs.length === 0 ? (
+                        <div className="text-center py-10 text-slate-400 text-sm">
+                          <Bell size={24} className="mx-auto mb-2 opacity-20" />
+                          Sin notificaciones
+                        </div>
+                      ) : userNotifs.map((n) => {
+                        const isUnread = !parseInt(n.is_read);
+                        const typeIcon = {
+                          task_assigned:       { emoji: '👤', color: 'text-indigo-500' },
+                          task_status_changed: { emoji: '🔄', color: 'text-blue-500'   },
+                          task_comment:        { emoji: '💬', color: 'text-emerald-500' },
+                          mention:             { emoji: '@',  color: 'text-violet-600'  },
+                          announcement:        { emoji: '📢', color: 'text-amber-500'   },
+                        }[n.type] ?? { emoji: '🔔', color: 'text-slate-400' };
+
+                        return (
+                          <div key={n.id}
+                            className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors group
+                              ${isUnread ? 'bg-indigo-50/40 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                            {/* Icon */}
+                            <span className="text-base flex-shrink-0 mt-0.5 w-6 text-center">{typeIcon.emoji}</span>
+
+                            {/* Content — click to navigate + mark read */}
+                            <Link to={n.link || '#'}
+                              onClick={() => { markRead(n.id); setNotifOpen(false); }}
+                              className="flex-1 min-w-0 block">
+                              <p className={`text-xs font-semibold leading-snug ${isUnread ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
+                                {n.title}
+                                {isUnread && <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 ml-1.5 mb-0.5" />}
+                              </p>
+                              {n.body && <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                              <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-0.5">
+                                {(() => {
+                                  const diff = Date.now() - new Date(n.created_at).getTime();
+                                  const m = Math.floor(diff/60000), h = Math.floor(m/60), d = Math.floor(h/24);
+                                  return m < 1 ? 'ahora mismo' : m < 60 ? `hace ${m}m` : h < 24 ? `hace ${h}h` : `hace ${d}d`;
+                                })()}
+                              </p>
+                            </Link>
+
+                            {/* Actions */}
+                            <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              {isUnread && (
+                                <button onClick={() => markRead(n.id)} title="Marcar leída"
+                                  className="p-1 text-slate-300 hover:text-indigo-500 transition-colors">
+                                  <CheckSquare size={12} />
+                                </button>
+                              )}
+                              <button onClick={() => deleteNotif(n.id)} title="Eliminar"
+                                className="p-1 text-slate-300 hover:text-red-500 transition-colors">
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Panel — System alerts */}
+                  {notifTab === 'alerts' && (
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="text-center py-10 text-slate-400 text-sm">
+                          <CheckSquare size={24} className="mx-auto mb-2 opacity-20" />
+                          Sin alertas pendientes
+                        </div>
+                      ) : notifications.map((n, i) => {
                         const { icon: NIcon, cls } = SEVERITY_ICON[n.severity] || SEVERITY_ICON.info;
                         const isNew = !dismissedKeys.includes(getAlertKey(n));
                         return (
@@ -501,22 +636,19 @@ export default function Layout({ children }) {
                             </div>
                           </Link>
                         );
-                      })
-                    )}
-                  </div>
-                  {/* Browser notification opt-in */}
-                  {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
-                    <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20">
-                      <button
-                        onClick={() => Notification.requestPermission().then(() => setNotifOpen(false))}
-                        className="w-full text-xs text-indigo-700 dark:text-indigo-300 font-medium flex items-center justify-center gap-1.5 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors">
-                        <Bell size={11} /> Activar notificaciones del navegador
-                      </button>
+                      })}
                     </div>
                   )}
-                  {/* Auto-refresh hint */}
-                  <div className="px-4 py-1.5 border-t border-slate-100 dark:border-slate-700">
-                    <p className="text-[10px] text-slate-400 text-center">Se actualiza automáticamente cada 30 seg</p>
+
+                  {/* Footer */}
+                  <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    {typeof Notification !== 'undefined' && Notification.permission === 'default' ? (
+                      <button onClick={() => Notification.requestPermission()}
+                        className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                        <Bell size={10} /> Activar notif. nativas
+                      </button>
+                    ) : <span />}
+                    <p className="text-[10px] text-slate-300 dark:text-slate-600">Actualiza cada 30s</p>
                   </div>
                 </div>
               )}
