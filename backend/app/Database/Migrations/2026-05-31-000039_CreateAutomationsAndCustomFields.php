@@ -17,7 +17,7 @@ class CreateAutomationsAndCustomFields extends Migration
                 'id'            => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
                 'project_id'    => ['type'=>'INT','unsigned'=>true,'null'=>true],
                 'name'          => ['type'=>'VARCHAR','constraint'=>150],
-                'trigger_event' => ['type'=>'VARCHAR','constraint'=>60,  'comment'=>'task.created|task.status_changed|sprint.started|due_date.passed|...'],
+                'trigger_event' => ['type'=>'VARCHAR','constraint'=>60],
                 'conditions'    => ['type'=>'JSON','null'=>true],
                 'actions'       => ['type'=>'JSON','null'=>false],
                 'is_active'     => ['type'=>'TINYINT','constraint'=>1,'default'=>1],
@@ -55,7 +55,7 @@ class CreateAutomationsAndCustomFields extends Migration
                 'name'        => ['type'=>'VARCHAR','constraint'=>100],
                 'field_key'   => ['type'=>'VARCHAR','constraint'=>60],
                 'field_type'  => ['type'=>'ENUM','constraint'=>['text','number','date','dropdown','user','url','checkbox'],'default'=>'text'],
-                'options'     => ['type'=>'JSON','null'=>true, 'comment'=>'For dropdown: ["opt1","opt2"]'],
+                'options'     => ['type'=>'JSON','null'=>true],
                 'is_required' => ['type'=>'TINYINT','constraint'=>1,'default'=>0],
                 'sort_order'  => ['type'=>'INT UNSIGNED','default'=>0],
                 'created_at'  => ['type'=>'DATETIME','null'=>true],
@@ -86,7 +86,7 @@ class CreateAutomationsAndCustomFields extends Migration
                 'color'      => ['type'=>'VARCHAR','constraint'=>7,'default'=>'#6366f1'],
                 'position'   => ['type'=>'INT UNSIGNED','default'=>0],
                 'is_default' => ['type'=>'TINYINT','constraint'=>1,'default'=>0],
-                'maps_to'    => ['type'=>'ENUM','constraint'=>['PENDIENTE','EN_PROGRESO','BLOQUEADA','COMPLETADA'],'default'=>'PENDIENTE','comment'=>'Maps to system status'],
+                'maps_to'    => ['type'=>'ENUM','constraint'=>['PENDIENTE','EN_PROGRESO','BLOQUEADA','COMPLETADA'],'default'=>'PENDIENTE'],
             ]);
             $this->forge->addKey('id', true);
             $this->forge->addForeignKey('project_id','projects','id','CASCADE','CASCADE');

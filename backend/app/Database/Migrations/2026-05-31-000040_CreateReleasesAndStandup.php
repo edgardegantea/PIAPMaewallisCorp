@@ -19,7 +19,7 @@ class CreateReleasesAndStandup extends Migration
                 'status'       => ['type'=>'ENUM','constraint'=>['PLANNED','IN_PROGRESS','RELEASED','CANCELLED'],'default'=>'PLANNED'],
                 'release_date' => ['type'=>'DATE','null'=>true],
                 'description'  => ['type'=>'TEXT','null'=>true],
-                'changelog'    => ['type'=>'LONGTEXT','null'=>true, 'comment'=>'Auto-generated from completed tasks'],
+                'changelog'    => ['type'=>'LONGTEXT','null'=>true],
                 'created_by'   => ['type'=>'INT','unsigned'=>true,'null'=>true],
                 'created_at'   => ['type'=>'DATETIME','null'=>true],
                 'updated_at'   => ['type'=>'DATETIME','null'=>true],
@@ -48,7 +48,7 @@ class CreateReleasesAndStandup extends Migration
                 'project_id'  => ['type'=>'INT','unsigned'=>true],
                 'question'    => ['type'=>'VARCHAR','constraint'=>255],
                 'schedule'    => ['type'=>'ENUM','constraint'=>['daily','weekly'],'default'=>'daily'],
-                'day_of_week' => ['type'=>'TINYINT','null'=>true,'comment'=>'0=Sun,1=Mon... for weekly'],
+                'day_of_week' => ['type'=>'TINYINT','null'=>true],
                 'is_active'   => ['type'=>'TINYINT','constraint'=>1,'default'=>1],
                 'created_at'  => ['type'=>'DATETIME','null'=>true],
             ]);

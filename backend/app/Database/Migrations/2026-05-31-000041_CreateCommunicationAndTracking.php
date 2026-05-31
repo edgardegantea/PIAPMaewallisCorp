@@ -42,32 +42,35 @@ class CreateCommunicationAndTracking extends Migration
             $this->forge->createTable('announcement_reads');
         }
 
-        // ── File annotations (comments on attachments) ───────────────────────
+        // ── File annotations (x/y coords on documents) ───────────────────────
         if (!$this->db->tableExists('file_annotations')) {
             $this->forge->addField([
-                'id'            => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
-                'attachment_id' => ['type'=>'INT','unsigned'=>true],
-                'user_id'       => ['type'=>'INT','unsigned'=>true,'null'=>true],
-                'x_pct'         => ['type'=>'DECIMAL','constraint'=>'5,2','default'=>0,'comment'=>'0-100 % from left'],
-                'y_pct'         => ['type'=>'DECIMAL','constraint'=>'5,2','default'=>0,'comment'=>'0-100 % from top'],
-                'body'          => ['type'=>'TEXT'],
-                'resolved'      => ['type'=>'TINYINT','constraint'=>1,'default'=>0],
-                'created_at'    => ['type'=>'DATETIME','null'=>true],
+                'id'          => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
+                'document_id' => ['type'=>'INT','unsigned'=>true,'null'=>true],
+                'user_id'     => ['type'=>'INT','unsigned'=>true,'null'=>true],
+                'x_coord'     => ['type'=>'DECIMAL','constraint'=>'7,2','null'=>true],
+                'y_coord'     => ['type'=>'DECIMAL','constraint'=>'7,2','null'=>true],
+                'page'        => ['type'=>'INT UNSIGNED','default'=>1],
+                'body'        => ['type'=>'TEXT'],
+                'is_resolved' => ['type'=>'TINYINT','constraint'=>1,'default'=>0],
+                'resolved_by' => ['type'=>'INT','unsigned'=>true,'null'=>true],
+                'resolved_at' => ['type'=>'DATETIME','null'=>true],
+                'created_at'  => ['type'=>'DATETIME','null'=>true],
             ]);
             $this->forge->addKey('id', true);
-            $this->forge->addForeignKey('attachment_id','task_attachments','id','CASCADE','CASCADE');
-            $this->forge->addForeignKey('user_id',      'users',           'id','SET NULL','CASCADE');
+            $this->forge->addForeignKey('user_id','users','id','SET NULL','CASCADE');
             $this->forge->createTable('file_annotations');
         }
 
         // ── Task description history ─────────────────────────────────────────
         if (!$this->db->tableExists('task_description_history')) {
             $this->forge->addField([
-                'id'          => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
-                'task_id'     => ['type'=>'INT','unsigned'=>true],
-                'description' => ['type'=>'LONGTEXT','null'=>true],
-                'changed_by'  => ['type'=>'INT','unsigned'=>true,'null'=>true],
-                'created_at'  => ['type'=>'DATETIME','null'=>true],
+                'id'              => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
+                'task_id'         => ['type'=>'INT','unsigned'=>true],
+                'old_description' => ['type'=>'LONGTEXT','null'=>true],
+                'new_description' => ['type'=>'LONGTEXT','null'=>true],
+                'changed_by'      => ['type'=>'INT','unsigned'=>true,'null'=>true],
+                'created_at'      => ['type'=>'DATETIME','null'=>true],
             ]);
             $this->forge->addKey('id', true);
             $this->forge->addKey('task_id');
@@ -80,11 +83,11 @@ class CreateCommunicationAndTracking extends Migration
         if (!$this->db->tableExists('git_integrations')) {
             $this->forge->addField([
                 'id'           => ['type'=>'INT','unsigned'=>true,'auto_increment'=>true],
-                'project_id'   => ['type'=>'INT','unsigned'=>true'],
+                'project_id'   => ['type'=>'INT','unsigned'=>true],
                 'provider'     => ['type'=>'ENUM','constraint'=>['github','gitlab','bitbucket'],'default'=>'github'],
                 'repo_url'     => ['type'=>'VARCHAR','constraint'=>500],
                 'webhook_secret'=> ['type'=>'VARCHAR','constraint'=>100,'null'=>true],
-                'branch_pattern'=> ['type'=>'VARCHAR','constraint'=>100,'default'=>'*','comment'=>'e.g. main, feature/*'],
+                'branch_pattern'=> ['type'=>'VARCHAR','constraint'=>100,'default'=>'*'],
                 'is_active'    => ['type'=>'TINYINT','constraint'=>1,'default'=>1],
                 'created_by'   => ['type'=>'INT','unsigned'=>true,'null'=>true],
                 'created_at'   => ['type'=>'DATETIME','null'=>true],
@@ -149,7 +152,7 @@ class CreateCommunicationAndTracking extends Migration
                 'user_id'        => ['type'=>'INT','unsigned'=>true,'null'=>true],
                 'signer_name'    => ['type'=>'VARCHAR','constraint'=>150],
                 'signer_email'   => ['type'=>'VARCHAR','constraint'=>150],
-                'signature_hash' => ['type'=>'VARCHAR','constraint'=>64, 'comment'=>'SHA-256 of doc+user+timestamp'],
+                'signature_hash' => ['type'=>'VARCHAR','constraint'=>64],
                 'signed_at'      => ['type'=>'DATETIME','null'=>true],
                 'ip_address'     => ['type'=>'VARCHAR','constraint'=>45,'null'=>true],
             ]);
