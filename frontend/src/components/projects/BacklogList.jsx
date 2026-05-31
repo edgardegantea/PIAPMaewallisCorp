@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { projectsAPI } from '../../services/projectsAPI';
 import { toast } from 'sonner';
-import { Plus, Trash2, ArrowRight, Edit2, X, Check } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Edit2, X, Check, Bookmark, BookmarkCheck, ChevronDown } from 'lucide-react';
 import ConfirmModal from '../ConfirmModal';
 
 const PRIORITY_COLORS = {
@@ -34,6 +34,13 @@ export default function BacklogList({ projectId, isManager = false }) {
   const [editId, setEditId]       = useState(null);
   const [editForm, setEditForm]   = useState({});
 
+  // Filters
+  const [filterPriority, setFilterPriority] = useState('');
+  const [filterStatus, setFilterStatus]     = useState('');
+  const [savedFilters, setSavedFilters]     = useState([]);
+  const [showSaveFilter, setShowSaveFilter] = useState(false);
+  const [filterName, setFilterName]         = useState('');
+
   const load = () => {
     Promise.all([
       projectsAPI.getBacklogItems(projectId),
@@ -46,7 +53,38 @@ export default function BacklogList({ projectId, isManager = false }) {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [projectId]);
+  const loadSavedFilters = () => {
+    projectsAPI.getSavedFilters({ project_id: projectId })
+      .then(r => setSavedFilters(r.data ?? []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { load(); loadSavedFilters(); }, [projectId]);
+
+  const saveFilter = async () => {
+    if (!filterName.trim()) { toast.error('Dale un nombre al filtro'); return; }
+    try {
+      await projectsAPI.createSavedFilter({ project_id: projectId, name: filterName, filters: { priority: filterPriority, status: filterStatus } });
+      toast.success('Filtro guardado');
+      setFilterName('');
+      setShowSaveFilter(false);
+      loadSavedFilters();
+    } catch { toast.error('Error al guardar filtro'); }
+  };
+
+  const applyFilter = (f) => {
+    const filters = f.filters ?? {};
+    setFilterPriority(filters.priority ?? '');
+    setFilterStatus(filters.status ?? '');
+    toast.success(`Filtro "${f.name}" aplicado`);
+  };
+
+  const deleteFilter = async (id) => {
+    try {
+      await projectsAPI.deleteSavedFilter(id);
+      setSavedFilters(prev => prev.filter(f => f.id !== id));
+    } catch { toast.error('Error al eliminar filtro'); }
+  };
 
   // Auto-fill title from user story fields
   const buildTitle = (role, action, benefit) => {
@@ -128,6 +166,14 @@ export default function BacklogList({ projectId, isManager = false }) {
   const counts = items.reduce((acc, i) => { acc[i.status] = (acc[i.status] || 0) + 1; return acc; }, {});
   const totalPoints = items.reduce((s, i) => s + (parseInt(i.story_points) || 0), 0);
 
+  const displayedItems = items.filter(i => {
+    if (filterPriority && i.priority !== filterPriority) return false;
+    if (filterStatus   && i.status   !== filterStatus)   return false;
+    return true;
+  });
+
+  const hasActiveFilter = filterPriority || filterStatus;
+
   if (loading) return <p className="text-slate-400 text-sm">Cargando...</p>;
 
   return (
@@ -144,6 +190,62 @@ export default function BacklogList({ projectId, isManager = false }) {
             className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3 py-2 rounded-lg">
             <Plus size={14} /> Nueva Historia
           </button>
+        )}
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
+          className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="">Todas las prioridades</option>
+          <option value="BAJA">Baja</option>
+          <option value="MEDIA">Media</option>
+          <option value="ALTA">Alta</option>
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="">Todos los estados</option>
+          <option value="BACKLOG">Backlog</option>
+          <option value="EN_SPRINT">En Sprint</option>
+          <option value="COMPLETADA">Completada</option>
+        </select>
+        {hasActiveFilter && (
+          <button onClick={() => { setFilterPriority(''); setFilterStatus(''); }}
+            className="text-xs text-red-500 hover:underline flex items-center gap-1">
+            <X size={11} /> Limpiar
+          </button>
+        )}
+        {/* Saved filters dropdown */}
+        {savedFilters.length > 0 && (
+          <div className="relative group">
+            <button className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg px-2.5 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
+              <BookmarkCheck size={11} /> Filtros guardados <ChevronDown size={11} />
+            </button>
+            <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg min-w-[180px] hidden group-hover:block">
+              {savedFilters.map(f => (
+                <div key={f.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <button onClick={() => applyFilter(f)} className="text-xs text-slate-700 dark:text-slate-200 truncate text-left">{f.name}</button>
+                  <button onClick={() => deleteFilter(f.id)} className="text-slate-300 hover:text-red-500 flex-shrink-0 ml-2"><X size={11} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Save current filter */}
+        {hasActiveFilter && !showSaveFilter && (
+          <button onClick={() => setShowSaveFilter(true)}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 transition-colors">
+            <Bookmark size={11} /> Guardar filtro
+          </button>
+        )}
+        {showSaveFilter && (
+          <div className="flex items-center gap-1">
+            <input autoFocus type="text" value={filterName} onChange={e => setFilterName(e.target.value)}
+              placeholder="Nombre del filtro" onKeyDown={e => e.key === 'Enter' && saveFilter()}
+              className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 w-36 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <button onClick={saveFilter} className="text-emerald-600 hover:text-emerald-700"><Check size={14} /></button>
+            <button onClick={() => setShowSaveFilter(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+          </div>
         )}
       </div>
 
@@ -231,9 +333,11 @@ export default function BacklogList({ projectId, isManager = false }) {
 
       {items.length === 0 ? (
         <p className="text-slate-400 text-sm text-center py-8">Backlog vacío — agrega historias de usuario</p>
+      ) : displayedItems.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-6">Sin resultados con los filtros aplicados</p>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => {
+          {displayedItems.map((item) => {
             const epic = epics.find((e) => String(e.id) === String(item.epic_id));
             const isEdit = editId === item.id;
 

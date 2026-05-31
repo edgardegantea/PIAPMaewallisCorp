@@ -7,7 +7,7 @@ import {
   FileText, FileSpreadsheet, Presentation, Image, Archive,
   Upload, Download, File, Loader2, Link, Eye,
   CheckCircle2, Clock, AlertCircle, ChevronUp, ChevronDown,
-  Search, SortAsc, SortDesc,
+  Search, SortAsc, SortDesc, PenLine, ShieldCheck,
 } from 'lucide-react';
 import ConfirmModal  from '../ConfirmModal';
 import DocPreviewModal   from './DocPreviewModal';
@@ -247,11 +247,32 @@ export default function TechnicalDocList({ projectId, isManager = false }) {
   const [editFile, setEditFile]       = useState(null);
   const [editFileUrl, setEditFileUrl] = useState('');
 
+  // Doc signatures
+  const [signaturesMap, setSignaturesMap] = useState({});  // docId -> []
+  const [signingId, setSigningId]         = useState(null);
+
   const load = () =>
     projectsAPI.getTechnicalDocs(projectId)
       .then((r) => setDocs(r.data.data ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+  const loadSignatures = (docId) => {
+    projectsAPI.getDocSignatures(docId)
+      .then(r => setSignaturesMap(prev => ({ ...prev, [docId]: r.data ?? [] })))
+      .catch(() => {});
+  };
+
+  const signDocument = async (docId) => {
+    if (!confirm('¿Firmar digitalmente este documento? Tu identidad y timestamp quedarán registrados.')) return;
+    setSigningId(docId);
+    try {
+      await projectsAPI.signDocument(docId);
+      toast.success('Documento firmado');
+      loadSignatures(docId);
+    } catch { toast.error('Error al firmar'); }
+    finally { setSigningId(null); }
+  };
 
   useEffect(() => {
     load();
@@ -610,8 +631,36 @@ export default function TechnicalDocList({ projectId, isManager = false }) {
                             <CheckCircle2 size={9} /> Aprobar
                           </button>
                         )}
+                        {/* Sign button */}
+                        <button
+                          onClick={() => {
+                            loadSignatures(d.id);
+                            signDocument(d.id);
+                          }}
+                          disabled={signingId === d.id}
+                          className="flex items-center gap-1 text-[10px] text-violet-600 hover:text-violet-700 border border-violet-300 hover:border-violet-400 px-2 py-0.5 rounded-lg transition-colors disabled:opacity-50">
+                          <PenLine size={9} /> {signingId === d.id ? 'Firmando…' : 'Firmar'}
+                        </button>
                       </div>
                     </div>
+
+                    {/* Signatures panel */}
+                    {signaturesMap[d.id] && signaturesMap[d.id].length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+                          <ShieldCheck size={10} /> Firmas digitales ({signaturesMap[d.id].length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {signaturesMap[d.id].map(sig => (
+                            <div key={sig.id} className="flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg px-2 py-1">
+                              <ShieldCheck size={10} className="text-violet-600 dark:text-violet-400" />
+                              <span className="text-[10px] text-violet-700 dark:text-violet-300 font-medium">{sig.signer_name ?? 'Usuario'}</span>
+                              <span className="text-[10px] text-slate-400">{sig.signed_at?.slice(0, 10)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Version history + comments (collapsible) */}
                     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex flex-wrap gap-4">

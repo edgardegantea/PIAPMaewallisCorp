@@ -3,7 +3,7 @@ import { projectsAPI } from '../services/projectsAPI';
 import { useAuthStore } from '../stores/authStore';
 import Layout from '../components/Layout';
 import { toast } from 'sonner';
-import { Save, Building2, Lock } from 'lucide-react';
+import { Save, Building2, Lock, Shield, Plus, Trash2 } from 'lucide-react';
 
 const FIELDS = [
   { key: 'name',                label: 'Nombre Comercial',    required: true },
@@ -17,6 +17,136 @@ const FIELDS = [
   { key: 'phone',               label: 'Teléfono' },
   { key: 'website',             label: 'Sitio Web', type: 'url' },
 ];
+
+function IPAllowlistSection({ isAdmin }) {
+  const [rules, setRules]       = useState([]);
+  const [loadingIP, setLoadingIP] = useState(true);
+  const [ipForm, setIpForm]     = useState(null);
+  const [savingIP, setSavingIP] = useState(false);
+  const EMPTY_IP = { ip_cidr: '', description: '', is_active: true };
+
+  useEffect(() => {
+    projectsAPI.getIPAllowlist()
+      .then(r => setRules(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingIP(false));
+  }, []);
+
+  const saveIP = async () => {
+    if (!ipForm.ip_cidr.trim()) { toast.error('Ingresa una IP o rango CIDR'); return; }
+    setSavingIP(true);
+    try {
+      if (ipForm.id) {
+        await projectsAPI.updateIPRule(ipForm.id, ipForm);
+      } else {
+        await projectsAPI.createIPRule(ipForm);
+      }
+      toast.success('Regla guardada');
+      setIpForm(null);
+      const r = await projectsAPI.getIPAllowlist();
+      setRules(r.data ?? []);
+    } catch { toast.error('Error al guardar regla'); }
+    finally { setSavingIP(false); }
+  };
+
+  const removeIP = async (id) => {
+    if (!confirm('¿Eliminar esta regla IP?')) return;
+    try {
+      await projectsAPI.deleteIPRule(id);
+      setRules(prev => prev.filter(r => r.id !== id));
+      toast.success('Regla eliminada');
+    } catch { toast.error('Error al eliminar'); }
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield size={18} className="text-indigo-600" />
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Lista blanca de IPs</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Si está vacía, se permiten todas las IPs. Si tiene reglas, solo las IPs listadas pueden acceder.</p>
+          </div>
+        </div>
+        {isAdmin && !ipForm && (
+          <button onClick={() => setIpForm({ ...EMPTY_IP })}
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            <Plus size={13} /> Añadir IP
+          </button>
+        )}
+      </div>
+
+      {ipForm && (
+        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-3 border border-slate-200 dark:border-slate-600">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">IP o rango CIDR</label>
+              <input type="text" value={ipForm.ip_cidr} onChange={e => setIpForm(f => ({ ...f, ip_cidr: e.target.value }))}
+                placeholder="192.168.1.0/24 o 10.0.0.1"
+                className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Descripción</label>
+              <input type="text" value={ipForm.description} onChange={e => setIpForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="ej: Oficina central"
+                className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+            <input type="checkbox" checked={!!ipForm.is_active} onChange={e => setIpForm(f => ({ ...f, is_active: e.target.checked }))} className="accent-indigo-600" />
+            Regla activa
+          </label>
+          <div className="flex gap-2">
+            <button onClick={saveIP} disabled={savingIP}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+              {savingIP ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button onClick={() => setIpForm(null)}
+              className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loadingIP ? (
+        <p className="text-xs text-slate-400 text-center py-4">Cargando…</p>
+      ) : rules.length === 0 ? (
+        <p className="text-xs text-slate-400 text-center py-4">Sin reglas — todas las IPs están permitidas</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+              <th className="text-left py-2 px-3 font-medium">IP / CIDR</th>
+              <th className="text-left py-2 px-3 font-medium">Descripción</th>
+              <th className="text-left py-2 px-3 font-medium">Estado</th>
+              {isAdmin && <th className="py-2 px-3" />}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            {rules.map(r => (
+              <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                <td className="py-2 px-3"><code className="text-xs font-mono text-slate-700 dark:text-slate-200">{r.ip_cidr}</code></td>
+                <td className="py-2 px-3 text-xs text-slate-500 dark:text-slate-400">{r.description || '—'}</td>
+                <td className="py-2 px-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                    {r.is_active ? 'Activa' : 'Inactiva'}
+                  </span>
+                </td>
+                {isAdmin && (
+                  <td className="py-2 px-3 text-right">
+                    <button onClick={() => setIpForm({ ...r })} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline mr-3">Editar</button>
+                    <button onClick={() => removeIP(r.id)} className="text-xs text-red-500 hover:underline"><Trash2 size={11} className="inline" /></button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 export default function CompanySettingsPage() {
   const { user } = useAuthStore();
@@ -119,6 +249,9 @@ export default function CompanySettingsPage() {
             </div>
           </form>
         )}
+
+        {/* IP Allowlist — admin only */}
+        {isAdmin && <IPAllowlistSection isAdmin={isAdmin} />}
       </div>
     </Layout>
   );

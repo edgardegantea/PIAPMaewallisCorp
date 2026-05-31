@@ -494,6 +494,13 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('technicaldocs/(:num)/sign',                'Api\DocSignaturesController::sign/$1');
     $routes->get('technicaldocs/(:num)/verify',               'Api\DocSignaturesController::verify/$1');
 
+    // ── File Annotations ────────────────────────────────────────────────────
+    $routes->get('documents/(:num)/annotations',    'Api\FileAnnotationsController::index/$1');
+    $routes->post('documents/(:num)/annotations',   'Api\FileAnnotationsController::create/$1');
+    $routes->patch('annotations/(:num)',            'Api\FileAnnotationsController::update/$1');
+    $routes->patch('annotations/(:num)/resolve',    'Api\FileAnnotationsController::resolve/$1');
+    $routes->delete('annotations/(:num)',           'Api\FileAnnotationsController::delete/$1');
+
     // ── Tech doc extras ────────────────────────────────────────────────────
     $routes->get('technicaldocs/(:num)/versions',    'Api\TechDocVersionsController::index/$1');
     $routes->get('technicaldocs/(:num)/comments',    'Api\TechDocCommentsController::index/$1');

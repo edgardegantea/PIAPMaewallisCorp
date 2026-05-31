@@ -50,6 +50,9 @@ import StandupView from '../../components/projects/StandupView';
 import WeeklyReportsView from '../../components/projects/WeeklyReportsView';
 import SLAView from '../../components/projects/SLAView';
 import AnnouncementsView from '../../components/projects/AnnouncementsView';
+import GitIntegrationView from '../../components/projects/GitIntegrationView';
+import CustomFieldsView from '../../components/projects/CustomFieldsView';
+import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -123,6 +126,9 @@ const ALL_TABS = [
   { id: 'weekly',        label: 'Semanales',     icon: Sparkles,      managerOnly: true,  group: 'control'    },
   { id: 'sla',           label: 'SLA',           icon: AlertTriangle, managerOnly: true,  group: 'control'    },
   { id: 'announcements', label: 'Anuncios',      icon: ScrollText,    managerOnly: false, group: 'people'     },
+  { id: 'git',           label: 'Git',           icon: Link2,         managerOnly: true,  group: 'people'     },
+  { id: 'fields',        label: 'Campos',        icon: ListChecks,    managerOnly: true,  group: 'control'    },
+  { id: 'statuses',      label: 'Estados KB',    icon: Layers,        managerOnly: true,  group: 'control'    },
 ];
 
 /** Ordered group definitions for the tab bar */
@@ -445,6 +451,9 @@ export default function ProjectDetailPage() {
             {tab === 'weekly'        && <WeeklyReportsView    projectId={id} isManager={isManager} />}
             {tab === 'sla'           && <SLAView              projectId={id} isManager={isManager} />}
             {tab === 'announcements' && <AnnouncementsView    projectId={id} isManager={isManager} />}
+            {tab === 'git'           && <GitIntegrationView  projectId={id} isManager={isManager} />}
+            {tab === 'fields'        && <CustomFieldsView    projectId={id} isManager={isManager} />}
+            {tab === 'statuses'      && <ProjectStatusesView projectId={id} isManager={isManager} />}
           </div>
         </div>
 

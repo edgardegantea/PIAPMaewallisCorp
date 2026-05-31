@@ -472,4 +472,11 @@ export const projectsAPI = {
   getDocSignatures:     (docId)       => api.get(`/technicaldocs/${docId}/signatures`),
   signDocument:         (docId)       => api.post(`/technicaldocs/${docId}/sign`),
   verifyDocSignature:   (docId, hash) => api.get(`/technicaldocs/${docId}/verify`, { params: { hash } }),
+
+  // File Annotations (#14)
+  getFileAnnotations:    (docId)      => api.get(`/documents/${docId}/annotations`),
+  createFileAnnotation:  (docId, d)   => api.post(`/documents/${docId}/annotations`, d),
+  updateFileAnnotation:  (id, d)      => api.patch(`/annotations/${id}`, d),
+  deleteFileAnnotation:  (id)         => api.delete(`/annotations/${id}`),
+  resolveFileAnnotation: (id)         => api.patch(`/annotations/${id}/resolve`),
 };
