@@ -109,6 +109,9 @@ export default function KanbanBoard({ projectId, isManager = true }) {
   const [selectedTask, setSelectedTask]       = useState(null);
   const [reactivateTarget, setReactivateTarget] = useState(null);
 
+  // ── Swimlanes ──────────────────────────────────────────────
+  const [swimlaneBy, setSwimlaneBy]     = useState('none'); // 'none' | 'priority' | 'assignee'
+
   // ── View mode & bulk selection ─────────────────────────────
   const [viewMode, setViewMode]         = useState('board'); // 'board' | 'list'
   const [selectedIds, setSelectedIds]   = useState(new Set());
@@ -331,6 +334,15 @@ export default function KanbanBoard({ projectId, isManager = true }) {
               <Download size={12} /> CSV
             </button>
           )}
+          {/* Swimlane selector */}
+          <select value={swimlaneBy} onChange={e => setSwimlaneBy(e.target.value)}
+            title="Agrupar por swimlane"
+            className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+            <option value="none">Sin swimlanes</option>
+            <option value="priority">Por prioridad</option>
+            <option value="assignee">Por asignado</option>
+          </select>
+
           {/* View toggle */}
           <div className="flex border border-slate-300 rounded-lg overflow-hidden">
             <button onClick={() => { setViewMode('board'); clearSelection(); }}
@@ -501,7 +513,67 @@ export default function KanbanBoard({ projectId, isManager = true }) {
         </div>
       )}
 
-      {viewMode === 'board' && <div className="grid grid-cols-4 gap-3">
+      {/* ── Swimlane board ───────────────────────────────────── */}
+      {viewMode === 'board' && swimlaneBy !== 'none' && (() => {
+        // Build lane groups
+        const getLaneKey = (task) => {
+          if (swimlaneBy === 'priority') return task.priority || 'Sin prioridad';
+          if (swimlaneBy === 'assignee') {
+            const first = (task.assignees || [])[0];
+            return first ? `${first.first_name} ${first.last_name}` : 'Sin asignar';
+          }
+          return 'General';
+        };
+        const lanesMap = {};
+        filteredTasks.forEach(t => {
+          const key = getLaneKey(t);
+          if (!lanesMap[key]) lanesMap[key] = [];
+          lanesMap[key].push(t);
+        });
+        const lanes = Object.entries(lanesMap);
+
+        return (
+          <div className="space-y-6">
+            {lanes.map(([laneName, laneTasks]) => (
+              <div key={laneName}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{laneName}</span>
+                  <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded-full">{laneTasks.length}</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  {COLUMNS.map(col => {
+                    const colTasks = laneTasks.filter(t => t.status === col.id);
+                    return (
+                      <div key={col.id}
+                        onDragEnter={e => handleDragEnter(e, col.id)}
+                        onDragLeave={e => handleDragLeave(e, col.id)}
+                        onDragOver={handleDragOver}
+                        onDrop={e => handleDrop(e, col.id)}
+                        className={`rounded-xl border-2 p-3 min-h-24 transition-all ${dragOverCol === col.id ? col.drop + ' shadow-lg' : col.color + ' ' + col.bg}`}>
+                        <div className={`text-xs font-semibold mb-2 rounded px-2 py-0.5 ${col.header}`}>{col.label} ({colTasks.length})</div>
+                        <div className="space-y-2">
+                          {colTasks.map(task => (
+                            <div key={task.id} draggable
+                              onDragStart={e => handleDragStart(e, task.id)}
+                              onDragEnd={handleDragEnd}
+                              onClick={() => setSelectedTask(task)}
+                              className="bg-white dark:bg-slate-800 rounded-lg p-2.5 shadow-sm cursor-grab text-xs hover:shadow-md transition-all">
+                              <p className="font-medium text-slate-700 dark:text-slate-200 line-clamp-2">{task.title}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {viewMode === 'board' && swimlaneBy === 'none' && <div className="grid grid-cols-4 gap-3">
         {COLUMNS.map((col) => {
           const { id, label, color, bg, header, drop } = col;
           const colTasks  = filteredTasks.filter((t) => t.status === id);
@@ -685,6 +757,7 @@ export default function KanbanBoard({ projectId, isManager = true }) {
           );
         })}
       </div>}
+      {/* end swimlane === none */}
 
       {selectedTask && (
         <TaskDetailModal

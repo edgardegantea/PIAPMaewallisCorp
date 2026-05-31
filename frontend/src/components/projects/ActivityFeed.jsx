@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { projectsAPI } from '../../services/projectsAPI';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'sonner';
 import {
   Activity, CheckCircle2, Plus, Edit2, Trash2, Flag,
-  AlertTriangle, Users, RefreshCw, Check, X,
+  AlertTriangle, Users, RefreshCw, Check, X, Radio,
 } from 'lucide-react';
+
+const POLL_INTERVAL = 30_000; // 30 s
 
 const ACTION_META = {
   task_created:        { icon: Plus,          color: 'bg-indigo-100 text-indigo-600',   label: 'Tarea creada' },
@@ -48,15 +50,28 @@ export default function ActivityFeed({ projectId }) {
   const [editText, setEditText]     = useState('');
   const [saving, setSaving]         = useState(false);
   const [actionFilter, setActionFilter] = useState('all');
+  const [liveMode, setLiveMode]         = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const pollRef = useRef(null);
   const PER_PAGE = 15;
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     projectsAPI.getActivity(projectId)
-      .then((r) => setItems(r.data || []))
+      .then((r) => { setItems(r.data || []); setLastRefreshed(new Date()); })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!silent) setLoading(false); });
   };
+
+  // Start/stop live polling
+  useEffect(() => {
+    if (liveMode) {
+      pollRef.current = setInterval(() => load(true), POLL_INTERVAL);
+    } else {
+      clearInterval(pollRef.current);
+    }
+    return () => clearInterval(pollRef.current);
+  }, [liveMode, projectId]);
 
   useEffect(() => { load(); }, [projectId]);
 
@@ -127,11 +142,23 @@ export default function ActivityFeed({ projectId }) {
               {filtered.length}{actionFilter !== 'all' && `/${items.length}`}
             </span>
           </div>
-          <button onClick={load}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            title="Actualizar">
-            <RefreshCw size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            {lastRefreshed && liveMode && (
+              <span className="text-[10px] text-slate-400 hidden sm:block">
+                {lastRefreshed.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <button onClick={() => setLiveMode(v => !v)}
+              title={liveMode ? 'Desactivar actualización automática' : 'Activar actualización automática (30s)'}
+              className={`p-1.5 rounded-lg transition-colors ${liveMode ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 animate-pulse' : 'text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+              <Radio size={14} />
+            </button>
+            <button onClick={() => load()}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="Actualizar ahora">
+              <RefreshCw size={14} />
+            </button>
+          </div>
         </div>
         {/* Action-type filter chips */}
         <div className="flex gap-1.5 flex-wrap">

@@ -4,8 +4,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'sonner';
 import {
   BookOpen, Plus, Pencil, Trash2, Save, X,
-  ChevronRight, ChevronDown, FileText, Loader2,
+  ChevronRight, ChevronDown, FileText, Loader2, PenLine,
 } from 'lucide-react';
+
+const EXCALIDRAW_URL = 'https://excalidraw.com';
 
 /* ── simple rich-text-like textarea editor ─────────────────────── */
 function Editor({ value, onChange, placeholder }) {
@@ -89,6 +91,7 @@ export default function WikiView({ projectId, isManager }) {
   const [saving, setSaving]           = useState(false);
   const [showNew, setShowNew]         = useState(false);
   const [newTitle, setNewTitle]       = useState('');
+  const [showCanvas, setShowCanvas]   = useState(false);
 
   const buildTree = (flatPages) => {
     const map = {};
@@ -219,8 +222,26 @@ export default function WikiView({ projectId, isManager }) {
                     <Pencil size={12} /> Editar
                   </button>
                 ) : null}
+                {/* Whiteboard toggle */}
+                <button onClick={() => setShowCanvas(v => !v)}
+                  title="Pizarrón colaborativo (Excalidraw)"
+                  className={`flex items-center gap-1 text-xs border px-2.5 py-1 rounded-lg transition-colors ${showCanvas ? 'bg-violet-600 text-white border-violet-600' : 'text-slate-500 hover:text-violet-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'}`}>
+                  <PenLine size={12} /> Pizarrón
+                </button>
               </div>
             </div>
+            {/* Excalidraw whiteboard */}
+            {showCanvas && (
+              <div className="border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <iframe
+                  src={EXCALIDRAW_URL}
+                  title="Pizarrón colaborativo"
+                  className="w-full"
+                  style={{ height: '480px', border: 'none' }}
+                  allow="clipboard-read; clipboard-write"
+                />
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {editing ? (
                 <Editor value={editContent} onChange={setEditContent} />

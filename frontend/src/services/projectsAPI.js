@@ -473,6 +473,10 @@ export const projectsAPI = {
   signDocument:         (docId)       => api.post(`/technicaldocs/${docId}/sign`),
   verifyDocSignature:   (docId, hash) => api.get(`/technicaldocs/${docId}/verify`, { params: { hash } }),
 
+  // Description History (#24)
+  getDescriptionHistory:   (taskId)           => api.get(`/tasks/${taskId}/description-history`),
+  restoreDescriptionVersion:(taskId, vId)     => api.post(`/tasks/${taskId}/description-history/${vId}/restore`),
+
   // File Annotations (#14)
   getFileAnnotations:    (docId)      => api.get(`/documents/${docId}/annotations`),
   createFileAnnotation:  (docId, d)   => api.post(`/documents/${docId}/annotations`, d),

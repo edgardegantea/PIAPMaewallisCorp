@@ -53,6 +53,8 @@ import AnnouncementsView from '../../components/projects/AnnouncementsView';
 import GitIntegrationView from '../../components/projects/GitIntegrationView';
 import CustomFieldsView from '../../components/projects/CustomFieldsView';
 import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
+import HillChart from '../../components/projects/HillChart';
+import WhatIfView from '../../components/projects/WhatIfView';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -129,6 +131,8 @@ const ALL_TABS = [
   { id: 'git',           label: 'Git',           icon: Link2,         managerOnly: true,  group: 'people'     },
   { id: 'fields',        label: 'Campos',        icon: ListChecks,    managerOnly: true,  group: 'control'    },
   { id: 'statuses',      label: 'Estados KB',    icon: Layers,        managerOnly: true,  group: 'control'    },
+  { id: 'hillchart',     label: 'Hill Chart',    icon: TrendingUp,    managerOnly: false, group: 'control'    },
+  { id: 'whatif',        label: 'What-If',       icon: Sparkles,      managerOnly: true,  group: 'control'    },
 ];
 
 /** Ordered group definitions for the tab bar */
@@ -454,6 +458,8 @@ export default function ProjectDetailPage() {
             {tab === 'git'           && <GitIntegrationView  projectId={id} isManager={isManager} />}
             {tab === 'fields'        && <CustomFieldsView    projectId={id} isManager={isManager} />}
             {tab === 'statuses'      && <ProjectStatusesView projectId={id} isManager={isManager} />}
+            {tab === 'hillchart'     && <HillChart           projectId={id} isManager={isManager} />}
+            {tab === 'whatif'        && <WhatIfView          projectId={id} isManager={isManager} />}
           </div>
         </div>
 

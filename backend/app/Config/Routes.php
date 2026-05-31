@@ -501,6 +501,10 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->patch('annotations/(:num)/resolve',    'Api\FileAnnotationsController::resolve/$1');
     $routes->delete('annotations/(:num)',           'Api\FileAnnotationsController::delete/$1');
 
+    // ── Description History ─────────────────────────────────────────────────────
+    $routes->get('tasks/(:num)/description-history',                     'Api\DescriptionHistoryController::index/$1');
+    $routes->post('tasks/(:num)/description-history/(:num)/restore',     'Api\DescriptionHistoryController::restore/$1/$2');
+
     // ── Tech doc extras ────────────────────────────────────────────────────
     $routes->get('technicaldocs/(:num)/versions',    'Api\TechDocVersionsController::index/$1');
     $routes->get('technicaldocs/(:num)/comments',    'Api\TechDocCommentsController::index/$1');

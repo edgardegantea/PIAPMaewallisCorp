@@ -40,6 +40,7 @@ const TABS = [
   { id: 'tiempo',        icon: AlarmClock,   label: 'Tiempo'       },
   { id: 'dependencias',  icon: Link2,        label: 'Deps'         },
   { id: 'comentarios',   icon: MessageSquare,label: 'Comentarios'  },
+  { id: 'historial',     icon: RefreshCw,    label: 'Historial'    },
 ];
 
 const AVATAR_COLORS = [
@@ -123,6 +124,86 @@ function DeadlineSection({ form, setForm, isManager }) {
 }
 
 // ── Main modal ────────────────────────────────────────────────────────────────
+// ── DescriptionHistory sub-component ─────────────────────────────────────────
+function DescriptionHistory({ taskId, isManager, onRestore }) {
+  const [history, setHistory]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    projectsAPI.getDescriptionHistory(taskId)
+      .then(r => setHistory(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [taskId]);
+
+  const restore = async (version) => {
+    if (!confirm('¿Restaurar esta versión? La descripción actual se reemplazará.')) return;
+    try {
+      const r = await projectsAPI.restoreDescriptionVersion(taskId, version.id);
+      onRestore?.(r.data?.description ?? version.old_description);
+      toast.success('Descripción restaurada');
+      // Reload history
+      setLoading(true);
+      projectsAPI.getDescriptionHistory(taskId).then(r => setHistory(r.data ?? [])).finally(() => setLoading(false));
+    } catch { toast.error('Error al restaurar'); }
+  };
+
+  if (loading) return <p className="py-8 text-center text-slate-400 text-sm">Cargando historial…</p>;
+  if (history.length === 0) return (
+    <div className="py-10 text-center text-slate-400">
+      <RefreshCw size={28} className="mx-auto mb-2 opacity-30" />
+      <p className="text-sm">Sin cambios de descripción registrados</p>
+      <p className="text-xs mt-1">Los cambios se registran al guardar la tarea con una descripción diferente</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{history.length} versión{history.length !== 1 ? 'es' : ''} registrada{history.length !== 1 ? 's' : ''}</p>
+      {history.map((v, i) => (
+        <div key={v.id} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <button className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-left transition-colors"
+            onClick={() => setExpanded(expanded === v.id ? null : v.id)}>
+            <RefreshCw size={13} className="text-slate-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                Versión {history.length - i}
+              </span>
+              <span className="text-xs text-slate-400 ml-2">{v.created_at?.slice(0, 16)}</span>
+              {(v.first_name || v.username) && (
+                <span className="text-xs text-slate-400 ml-2">· {v.first_name ? `${v.first_name} ${v.last_name}` : v.username}</span>
+              )}
+            </div>
+            {isManager && (
+              <button onClick={e => { e.stopPropagation(); restore(v); }}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex-shrink-0 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
+                Restaurar
+              </button>
+            )}
+          </button>
+          {expanded === v.id && (
+            <div className="px-4 pb-4 pt-2 bg-slate-50 dark:bg-slate-700/30 space-y-3">
+              <div>
+                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wide mb-1">Antes</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
+                  {v.old_description || <span className="italic text-slate-400">(vacía)</span>}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-1">Después</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-100 dark:border-emerald-900">
+                  {v.new_description || <span className="italic text-slate-400">(vacía)</span>}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function TaskDetailModal({ task, projectId, isManager = true, onClose, onSaved }) {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('detalles');
@@ -298,6 +379,11 @@ export default function TaskDetailModal({ task, projectId, isManager = true, onC
         due_time: form.due_time ? `${form.due_time}:00` : null,
         estimated_hours: form.estimated_hours,
         labels: form.labels || '[]',
+        // RICE scoring
+        rice_reach:      form.rice_reach      || null,
+        rice_impact:     form.rice_impact     || null,
+        rice_confidence: form.rice_confidence || null,
+        rice_effort:     form.rice_effort     || null,
       };
       // Solo managers pueden cambiar asignados
       if (isManager) payload.assignees = assignees.map(Number);
@@ -860,6 +946,46 @@ export default function TaskDetailModal({ task, projectId, isManager = true, onC
                   </button>
                 </div>
               </div>
+
+              {/* ── RICE Scoring ─────────────────────────────── */}
+              {isManager && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3 bg-slate-50 dark:bg-slate-700/30">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">RICE Scoring</label>
+                    {(() => {
+                      const r = parseFloat(form.rice_reach      || 0);
+                      const i = parseFloat(form.rice_impact     || 0);
+                      const c = parseFloat(form.rice_confidence || 0) / 100;
+                      const e = parseFloat(form.rice_effort     || 1);
+                      const score = e > 0 ? ((r * i * c) / e).toFixed(1) : '—';
+                      return (
+                        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                          {score} <span className="text-xs font-normal text-slate-400">RICE</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { field: 'rice_reach',      label: 'Alcance',     hint: 'Usuarios/mes afectados',   min: 0, max: 100000, step: 100 },
+                      { field: 'rice_impact',     label: 'Impacto',     hint: '0.25 · 0.5 · 1 · 2 · 3',  min: 0.25, max: 3, step: 0.25 },
+                      { field: 'rice_confidence', label: 'Confianza %', hint: '20 · 50 · 80 · 100',       min: 0, max: 100, step: 10 },
+                      { field: 'rice_effort',     label: 'Esfuerzo',    hint: 'Person-months',             min: 0.5, max: 12, step: 0.5 },
+                    ].map(({ field, label, hint, min, max, step }) => (
+                      <div key={field}>
+                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          {label} <span className="text-slate-400 font-normal italic">({hint})</span>
+                        </label>
+                        <input type="number" min={min} max={max} step={step}
+                          value={form[field] || ''}
+                          onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+                          className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400">Fórmula: (Reach × Impact × Confidence%) ÷ Effort</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1439,6 +1565,12 @@ export default function TaskDetailModal({ task, projectId, isManager = true, onC
                 </button>
               </div>
             </div>
+          )}
+
+          {/* ── HISTORIAL DE DESCRIPCIÓN ───────────────────────── */}
+          {activeTab === 'historial' && (
+            <DescriptionHistory taskId={task.id} isManager={isManager}
+              onRestore={(desc) => setForm(f => ({ ...f, description: desc }))} />
           )}
         </div>
 
