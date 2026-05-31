@@ -409,6 +409,91 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     // ── Excel export ───────────────────────────────────────────────────────
     $routes->get('projects/(:num)/export/excel', 'Api\ExportController::excel/$1');
 
+    // ── Automations ────────────────────────────────────────────────────────
+    $routes->get('automations/meta',                          'Api\AutomationsController::getMetadata');
+    $routes->get('projects/(:num)/automations',               'Api\AutomationsController::index/$1');
+    $routes->post('projects/(:num)/automations',              'Api\AutomationsController::create/$1');
+    $routes->patch('automations/(:num)',                      'Api\AutomationsController::update/$1');
+    $routes->delete('automations/(:num)',                     'Api\AutomationsController::delete/$1');
+    $routes->post('automations/(:num)/toggle',                'Api\AutomationsController::toggle/$1');
+    $routes->get('automations/(:num)/logs',                   'Api\AutomationsController::logs/$1');
+
+    // ── Custom Fields ──────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/custom-fields',             'Api\CustomFieldsController::index/$1');
+    $routes->post('projects/(:num)/custom-fields',            'Api\CustomFieldsController::create/$1');
+    $routes->patch('custom-fields/(:num)',                    'Api\CustomFieldsController::update/$1');
+    $routes->delete('custom-fields/(:num)',                   'Api\CustomFieldsController::delete/$1');
+    $routes->get('tasks/(:num)/custom-values',                'Api\CustomFieldsController::getTaskValues/$1');
+    $routes->put('tasks/(:num)/custom-values',                'Api\CustomFieldsController::setTaskValues/$1');
+
+    // ── Custom Statuses ────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/statuses',                  'Api\ProjectStatusesController::index/$1');
+    $routes->post('projects/(:num)/statuses',                 'Api\ProjectStatusesController::create/$1');
+    $routes->patch('project-statuses/(:num)',                 'Api\ProjectStatusesController::update/$1');
+    $routes->delete('project-statuses/(:num)',                'Api\ProjectStatusesController::delete/$1');
+
+    // ── Saved Filters ──────────────────────────────────────────────────────
+    $routes->get('saved-filters',                             'Api\SavedFiltersController::index');
+    $routes->post('saved-filters',                            'Api\SavedFiltersController::create');
+    $routes->delete('saved-filters/(:num)',                   'Api\SavedFiltersController::delete/$1');
+
+    // ── Releases ───────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/releases',                  'Api\ReleasesController::index/$1');
+    $routes->post('projects/(:num)/releases',                 'Api\ReleasesController::create/$1');
+    $routes->patch('releases/(:num)',                         'Api\ReleasesController::update/$1');
+    $routes->delete('releases/(:num)',                        'Api\ReleasesController::delete/$1');
+    $routes->get('releases/(:num)/tasks',                     'Api\ReleasesController::tasks/$1');
+    $routes->post('releases/(:num)/tasks',                    'Api\ReleasesController::addTasks/$1');
+    $routes->post('releases/(:num)/generate-changelog',       'Api\ReleasesController::generateChangelog/$1');
+
+    // ── Standup ────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/standup',                   'Api\StandupController::index/$1');
+    $routes->post('projects/(:num)/standup/questions',        'Api\StandupController::createQuestion/$1');
+    $routes->delete('standup/questions/(:num)',               'Api\StandupController::deleteQuestion/$1');
+    $routes->post('standup/(:num)/answer',                    'Api\StandupController::answer/$1');
+    $routes->get('projects/(:num)/standup/history',           'Api\StandupController::history/$1');
+
+    // ── Weekly Reports ─────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/weekly-reports',            'Api\WeeklyReportsController::index/$1');
+    $routes->post('projects/(:num)/weekly-reports',           'Api\WeeklyReportsController::create/$1');
+    $routes->patch('weekly-reports/(:num)',                   'Api\WeeklyReportsController::update/$1');
+    $routes->delete('weekly-reports/(:num)',                  'Api\WeeklyReportsController::delete/$1');
+
+    // ── SLA ────────────────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/sla/policies',              'Api\SLAController::policies/$1');
+    $routes->post('projects/(:num)/sla/policies',             'Api\SLAController::createPolicy/$1');
+    $routes->patch('sla/policies/(:num)',                     'Api\SLAController::updatePolicy/$1');
+    $routes->delete('sla/policies/(:num)',                    'Api\SLAController::deletePolicy/$1');
+    $routes->get('projects/(:num)/sla/dashboard',             'Api\SLAController::dashboard/$1');
+
+    // ── Announcements ──────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/announcements',             'Api\AnnouncementsController::index/$1');
+    $routes->post('projects/(:num)/announcements',            'Api\AnnouncementsController::create/$1');
+    $routes->patch('announcements/(:num)',                    'Api\AnnouncementsController::update/$1');
+    $routes->delete('announcements/(:num)',                   'Api\AnnouncementsController::delete/$1');
+    $routes->post('announcements/(:num)/read',                'Api\AnnouncementsController::markRead/$1');
+
+    // ── Weekly Reports / Dashboard Widgets ─────────────────────────────────
+    $routes->get('dashboard-widgets',                         'Api\DashboardWidgetsController::index');
+    $routes->post('dashboard-widgets',                        'Api\DashboardWidgetsController::save');
+
+    // ── Git Integration ────────────────────────────────────────────────────
+    $routes->get('projects/(:num)/git',                       'Api\GitIntegrationController::index/$1');
+    $routes->post('projects/(:num)/git',                      'Api\GitIntegrationController::create/$1');
+    $routes->delete('git/(:num)',                             'Api\GitIntegrationController::delete/$1');
+    $routes->get('projects/(:num)/git/commits',               'Api\GitIntegrationController::commits/$1');
+
+    // ── IP Allowlist ───────────────────────────────────────────────────────
+    $routes->get('ip-allowlist',                              'Api\IPAllowlistController::index');
+    $routes->post('ip-allowlist',                             'Api\IPAllowlistController::create');
+    $routes->patch('ip-allowlist/(:num)',                     'Api\IPAllowlistController::update/$1');
+    $routes->delete('ip-allowlist/(:num)',                    'Api\IPAllowlistController::delete/$1');
+
+    // ── Doc Signatures ─────────────────────────────────────────────────────
+    $routes->get('technicaldocs/(:num)/signatures',           'Api\DocSignaturesController::index/$1');
+    $routes->post('technicaldocs/(:num)/sign',                'Api\DocSignaturesController::sign/$1');
+    $routes->get('technicaldocs/(:num)/verify',               'Api\DocSignaturesController::verify/$1');
+
     // ── Tech doc extras ────────────────────────────────────────────────────
     $routes->get('technicaldocs/(:num)/versions',    'Api\TechDocVersionsController::index/$1');
     $routes->get('technicaldocs/(:num)/comments',    'Api\TechDocCommentsController::index/$1');
@@ -418,6 +503,9 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('technicaldocs/(:num)/request-review',  'Api\TechnicalDocsController::requestReview/$1');
     $routes->patch('technicaldocs/(:num)/sort',           'Api\TechnicalDocsController::sort/$1');
 });
+
+// Git webhooks (public — verified by signature)
+$routes->post('api/git-webhook/(:num)', 'Api\GitIntegrationController::webhook/$1');
 
 // Guest public access (read-only via invite token)
 $routes->get('api/guest/(:alphanum)', 'Api\GuestController::view/$1');

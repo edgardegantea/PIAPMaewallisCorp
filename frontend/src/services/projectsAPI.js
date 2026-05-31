@@ -387,4 +387,89 @@ export const projectsAPI = {
 
   // Export
   getExcelData: (projectId) => api.get(`/projects/${projectId}/export/excel`),
+
+  // Automations
+  getAutomationMeta:    ()            => api.get('/automations/meta'),
+  getAutomations:       (pId)         => api.get(`/projects/${pId}/automations`),
+  createAutomation:     (pId, d)      => api.post(`/projects/${pId}/automations`, d),
+  updateAutomation:     (id, d)       => api.patch(`/automations/${id}`, d),
+  deleteAutomation:     (id)          => api.delete(`/automations/${id}`),
+  toggleAutomation:     (id)          => api.post(`/automations/${id}/toggle`),
+  getAutomationLogs:    (id)          => api.get(`/automations/${id}/logs`),
+
+  // Custom Fields
+  getCustomFields:      (pId)         => api.get(`/projects/${pId}/custom-fields`),
+  createCustomField:    (pId, d)      => api.post(`/projects/${pId}/custom-fields`, d),
+  updateCustomField:    (id, d)       => api.patch(`/custom-fields/${id}`, d),
+  deleteCustomField:    (id)          => api.delete(`/custom-fields/${id}`),
+  getTaskCustomValues:  (taskId)      => api.get(`/tasks/${taskId}/custom-values`),
+  setTaskCustomValues:  (taskId, d)   => api.put(`/tasks/${taskId}/custom-values`, d),
+
+  // Custom Statuses
+  getProjectStatuses:   (pId)         => api.get(`/projects/${pId}/statuses`),
+  createProjectStatus:  (pId, d)      => api.post(`/projects/${pId}/statuses`, d),
+  updateProjectStatus:  (id, d)       => api.patch(`/project-statuses/${id}`, d),
+  deleteProjectStatus:  (id)          => api.delete(`/project-statuses/${id}`),
+
+  // Saved Filters
+  getSavedFilters:      (params)      => api.get('/saved-filters', { params }),
+  createSavedFilter:    (d)           => api.post('/saved-filters', d),
+  deleteSavedFilter:    (id)          => api.delete(`/saved-filters/${id}`),
+
+  // Releases
+  getReleases:          (pId)         => api.get(`/projects/${pId}/releases`),
+  createRelease:        (pId, d)      => api.post(`/projects/${pId}/releases`, d),
+  updateRelease:        (id, d)       => api.patch(`/releases/${id}`, d),
+  deleteRelease:        (id)          => api.delete(`/releases/${id}`),
+  getReleaseTasks:      (id)          => api.get(`/releases/${id}/tasks`),
+  addReleaseTasks:      (id, ids)     => api.post(`/releases/${id}/tasks`, { task_ids: ids }),
+  generateChangelog:    (id)          => api.post(`/releases/${id}/generate-changelog`),
+
+  // Standup
+  getStandup:           (pId)         => api.get(`/projects/${pId}/standup`),
+  createStandupQ:       (pId, d)      => api.post(`/projects/${pId}/standup/questions`, d),
+  deleteStandupQ:       (id)          => api.delete(`/standup/questions/${id}`),
+  answerStandup:        (qId, answer) => api.post(`/standup/${qId}/answer`, { answer }),
+  getStandupHistory:    (pId, days)   => api.get(`/projects/${pId}/standup/history`, { params: { days } }),
+
+  // Weekly Reports
+  getWeeklyReports:     (pId)         => api.get(`/projects/${pId}/weekly-reports`),
+  createWeeklyReport:   (pId, d)      => api.post(`/projects/${pId}/weekly-reports`, d),
+  updateWeeklyReport:   (id, d)       => api.patch(`/weekly-reports/${id}`, d),
+  deleteWeeklyReport:   (id)          => api.delete(`/weekly-reports/${id}`),
+
+  // SLA
+  getSLAPolicies:       (pId)         => api.get(`/projects/${pId}/sla/policies`),
+  createSLAPolicy:      (pId, d)      => api.post(`/projects/${pId}/sla/policies`, d),
+  updateSLAPolicy:      (id, d)       => api.patch(`/sla/policies/${id}`, d),
+  deleteSLAPolicy:      (id)          => api.delete(`/sla/policies/${id}`),
+  getSLADashboard:      (pId)         => api.get(`/projects/${pId}/sla/dashboard`),
+
+  // Announcements
+  getAnnouncements:     (pId)         => api.get(`/projects/${pId}/announcements`),
+  createAnnouncement:   (pId, d)      => api.post(`/projects/${pId}/announcements`, d),
+  updateAnnouncement:   (id, d)       => api.patch(`/announcements/${id}`, d),
+  deleteAnnouncement:   (id)          => api.delete(`/announcements/${id}`),
+  markAnnouncementRead: (id)          => api.post(`/announcements/${id}/read`),
+
+  // Dashboard Widgets
+  getDashboardWidgets:  ()            => api.get('/dashboard-widgets'),
+  saveDashboardWidgets: (widgets)     => api.post('/dashboard-widgets', { widgets }),
+
+  // Git Integration
+  getGitIntegrations:   (pId)         => api.get(`/projects/${pId}/git`),
+  createGitIntegration: (pId, d)      => api.post(`/projects/${pId}/git`, d),
+  deleteGitIntegration: (id)          => api.delete(`/git/${id}`),
+  getGitCommits:        (pId)         => api.get(`/projects/${pId}/git/commits`),
+
+  // IP Allowlist
+  getIPAllowlist:       ()            => api.get('/ip-allowlist'),
+  createIPRule:         (d)           => api.post('/ip-allowlist', d),
+  updateIPRule:         (id, d)       => api.patch(`/ip-allowlist/${id}`, d),
+  deleteIPRule:         (id)          => api.delete(`/ip-allowlist/${id}`),
+
+  // Doc Signatures
+  getDocSignatures:     (docId)       => api.get(`/technicaldocs/${docId}/signatures`),
+  signDocument:         (docId)       => api.post(`/technicaldocs/${docId}/sign`),
+  verifyDocSignature:   (docId, hash) => api.get(`/technicaldocs/${docId}/verify`, { params: { hash } }),
 };
