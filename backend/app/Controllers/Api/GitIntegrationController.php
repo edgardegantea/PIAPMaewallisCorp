@@ -19,8 +19,7 @@ class GitIntegrationController extends BaseController
         $db->table('git_integrations')->insert(['project_id'=>$projectId,'provider'=>$data['provider']??'github','repo_url'=>$data['repo_url'],'webhook_secret'=>$secret,'branch_pattern'=>$data['branch_pattern']??'*','is_active'=>1,'created_by'=>Auth::id(),'created_at'=>date('Y-m-d H:i:s')]);
         $id = $db->insertID();
         $row = $db->table('git_integrations')->where('id',$id)->get()->getRowArray();
-        $frontUrl = env('APP_FRONTEND_URL','https://piap.maewalliscorp.org');
-        $row['webhook_url'] = str_replace($frontUrl,'https://piap-backend.maewalliscorp.org/api',env('APP_FRONTEND_URL',''))."git-webhook/{$id}";
+        $row['webhook_url'] = rtrim(env('APP_BACKEND_URL','https://piap-backend.maewalliscorp.org/api'),'/')."/git-webhook/{$id}";
         return $this->response->setStatusCode(201)->setJSON($row);
     }
     public function delete(int $id): ResponseInterface { Database::connect()->table('git_integrations')->where('id',$id)->delete(); return $this->response->setStatusCode(204)->setBody(''); }

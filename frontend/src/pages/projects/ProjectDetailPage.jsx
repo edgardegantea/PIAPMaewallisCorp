@@ -44,6 +44,12 @@ import CapacityView from '../../components/projects/CapacityView';
 import WebhookManager from '../../components/projects/WebhookManager';
 import GuestInviteManager from '../../components/projects/GuestInviteManager';
 import CSVImportModal from '../../components/projects/CSVImportModal';
+import AutomationsView from '../../components/projects/AutomationsView';
+import ReleasesView from '../../components/projects/ReleasesView';
+import StandupView from '../../components/projects/StandupView';
+import WeeklyReportsView from '../../components/projects/WeeklyReportsView';
+import SLAView from '../../components/projects/SLAView';
+import AnnouncementsView from '../../components/projects/AnnouncementsView';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -110,6 +116,13 @@ const ALL_TABS = [
   { id: 'capacity',      label: 'Capacidad',     icon: Users,         managerOnly: true,  group: 'control'    },
   { id: 'webhooks',      label: 'Webhooks',      icon: Webhook,       managerOnly: true,  group: 'people'     },
   { id: 'guest',         label: 'Invitados',     icon: Link2,         managerOnly: true,  group: 'people'     },
+  // Batch 3 features
+  { id: 'automations',   label: 'Automatiz.',    icon: Zap,           managerOnly: true,  group: 'control'    },
+  { id: 'releases',      label: 'Releases',      icon: Tag,           managerOnly: true,  group: 'control'    },
+  { id: 'standup',       label: 'Standup',       icon: CheckCircle2,  managerOnly: false, group: 'ceremonies' },
+  { id: 'weekly',        label: 'Semanales',     icon: Sparkles,      managerOnly: true,  group: 'control'    },
+  { id: 'sla',           label: 'SLA',           icon: AlertTriangle, managerOnly: true,  group: 'control'    },
+  { id: 'announcements', label: 'Anuncios',      icon: ScrollText,    managerOnly: false, group: 'people'     },
 ];
 
 /** Ordered group definitions for the tab bar */
@@ -426,6 +439,12 @@ export default function ProjectDetailPage() {
             )}
             {tab === 'webhooks'      && <WebhookManager       projectId={id} isManager={isManager} />}
             {tab === 'guest'         && <GuestInviteManager   projectId={id} isManager={isManager} />}
+            {tab === 'automations'   && <AutomationsView      projectId={id} isManager={isManager} />}
+            {tab === 'releases'      && <ReleasesView         projectId={id} isManager={isManager} />}
+            {tab === 'standup'       && <StandupView          projectId={id} isManager={isManager} />}
+            {tab === 'weekly'        && <WeeklyReportsView    projectId={id} isManager={isManager} />}
+            {tab === 'sla'           && <SLAView              projectId={id} isManager={isManager} />}
+            {tab === 'announcements' && <AnnouncementsView    projectId={id} isManager={isManager} />}
           </div>
         </div>
 

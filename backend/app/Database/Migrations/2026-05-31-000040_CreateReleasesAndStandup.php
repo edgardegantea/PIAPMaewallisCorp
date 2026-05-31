@@ -67,6 +67,7 @@ class CreateReleasesAndStandup extends Migration
                 'created_at'  => ['type'=>'DATETIME','null'=>true],
             ]);
             $this->forge->addKey('id', true);
+            $this->forge->addKey(['question_id','user_id','answer_date'], false, true); // unique per user per question per day
             $this->forge->addForeignKey('question_id','standup_questions','id','CASCADE','CASCADE');
             $this->forge->addForeignKey('user_id',    'users',            'id','SET NULL','CASCADE');
             $this->forge->createTable('standup_answers');

@@ -128,7 +128,7 @@ class AutomationsController extends BaseController
                         self::executeAction($action, $context, $db);
                     }
 
-                    $db->table('automation_rules')->where('id', $rule['id'])->update(['run_count' => $db->query("SELECT run_count FROM automation_rules WHERE id = ?", [$rule['id']])->getRowArray()['run_count'] + 1, 'last_run_at' => date('Y-m-d H:i:s')]);
+                    $db->query("UPDATE automation_rules SET run_count = run_count + 1, last_run_at = NOW() WHERE id = ?", [$rule['id']]);
                     $db->table('automation_logs')->insert(['rule_id'=>$rule['id'],'entity_type'=>$context['entity_type']??'task','entity_id'=>$context['entity_id']??0,'result'=>'ok','created_at'=>date('Y-m-d H:i:s')]);
                 } catch (\Throwable $e) {
                     $db->table('automation_logs')->insert(['rule_id'=>$rule['id'],'entity_type'=>$context['entity_type']??'task','entity_id'=>$context['entity_id']??0,'result'=>'error','detail'=>$e->getMessage(),'created_at'=>date('Y-m-d H:i:s')]);
