@@ -8,6 +8,7 @@ import {
   CheckCircle2, Clock, AlertTriangle, Zap, FolderKanban,
   TrendingUp, ListTodo, ChevronRight, Activity, Users,
   CalendarDays, Flag, BarChart2, ArrowRight, Circle, PieChart as PieIcon,
+  LayoutDashboard, X,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -387,6 +388,16 @@ function TeamStatsChart({ team }) {
   );
 }
 
+// ── Widget definitions ───────────────────────────────────────────────────────
+const WIDGET_DEFS = [
+  { id: 'stats',        label: 'Tarjetas KPI',       defaultOn: true  },
+  { id: 'urgent_tasks', label: 'Tareas urgentes',    defaultOn: true  },
+  { id: 'projects',     label: 'Mis proyectos',      defaultOn: true  },
+  { id: 'activity',     label: 'Actividad reciente', defaultOn: true  },
+  { id: 'charts',       label: 'Gráficas',           defaultOn: true  },
+];
+const DEFAULT_WIDGETS = Object.fromEntries(WIDGET_DEFS.map(w => [w.id, w.defaultOn]));
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user }     = useAuthStore();
@@ -394,6 +405,9 @@ export default function DashboardPage() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
+  const [widgets, setWidgets]   = useState(DEFAULT_WIDGETS);
+  const [showWidgetPanel, setShowWidgetPanel] = useState(false);
+  const [savingWidgets, setSavingWidgets]     = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -403,7 +417,33 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  const loadWidgets = () => {
+    projectsAPI.getDashboardWidgets()
+      .then(r => {
+        const saved = r.data ?? [];
+        if (saved.length > 0) {
+          const map = { ...DEFAULT_WIDGETS };
+          saved.forEach(w => { if (w.widget_id in map) map[w.widget_id] = !!w.is_visible; });
+          setWidgets(map);
+        }
+      })
+      .catch(() => {}); // silent — fallback to defaults
+  };
+
+  const saveWidgets = async () => {
+    setSavingWidgets(true);
+    try {
+      const payload = Object.entries(widgets).map(([widget_id, is_visible], position) => ({
+        widget_id, is_visible, position,
+      }));
+      await projectsAPI.saveDashboardWidgets(payload);
+      toast.success('Dashboard personalizado guardado');
+      setShowWidgetPanel(false);
+    } catch { toast.error('Error al guardar preferencias'); }
+    finally { setSavingWidgets(false); }
+  };
+
+  useEffect(() => { load(); loadWidgets(); }, []);
 
   const changeStatus = async (task, newStatus) => {
     setUpdating(task.id);
@@ -452,6 +492,37 @@ export default function DashboardPage() {
     <Layout>
       <div className="p-4 sm:p-6 space-y-6">
 
+        {/* ── Widget customizer panel ────────────────────────────────── */}
+        {showWidgetPanel && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <LayoutDashboard size={14} className="text-indigo-500" /> Personalizar dashboard
+              </h3>
+              <button onClick={() => setShowWidgetPanel(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {WIDGET_DEFS.map(w => (
+                <label key={w.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none bg-slate-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                  <input type="checkbox" checked={!!widgets[w.id]} onChange={e => setWidgets(prev => ({ ...prev, [w.id]: e.target.checked }))}
+                    className="accent-indigo-600" />
+                  {w.label}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={saveWidgets} disabled={savingWidgets}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                {savingWidgets ? 'Guardando…' : 'Guardar preferencias'}
+              </button>
+              <button onClick={() => { setWidgets(DEFAULT_WIDGETS); }}
+                className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                Restaurar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── Hero greeting ──────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-700 dark:to-violet-800 rounded-2xl p-5 sm:p-6 flex items-start justify-between gap-4">
           <div>
@@ -480,8 +551,16 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <div className={`${avatarColor} w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-lg`}>
-            {initials.toUpperCase()}
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            <div className={`${avatarColor} w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+              {initials.toUpperCase()}
+            </div>
+            <button
+              onClick={() => setShowWidgetPanel(p => !p)}
+              title="Personalizar dashboard"
+              className="flex items-center gap-1 text-[10px] text-indigo-200 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg px-2 py-1 transition-colors">
+              <LayoutDashboard size={11} /> Personalizar
+            </button>
           </div>
         </div>
 
@@ -489,6 +568,7 @@ export default function DashboardPage() {
         {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
         {/* ── KPI strip ──────────────────────────────────────────────── */}
+        {widgets.stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard icon={ListTodo}     label="Tareas activas"   value={ts.total}       color="bg-indigo-500" textColor="text-indigo-600" />
           <StatCard icon={Zap}          label="En progreso"      value={ts.en_progreso} color="bg-blue-500"   textColor="text-blue-600" />
@@ -496,13 +576,14 @@ export default function DashboardPage() {
             sub={ts.overdue > 0 ? `${ts.overdue} vencida${ts.overdue !== 1 ? 's' : ''}` : undefined} />
           <StatCard icon={FolderKanban} label="Proyectos activos" value={projects.length} color="bg-emerald-500" textColor="text-emerald-600" />
         </div>
+        )}
 
         {/* ── Two-column body ────────────────────────────────────────── */}
         <div className="grid lg:grid-cols-5 gap-6">
 
           {/* ── Left: Mis tareas urgentes ─────── (col 3/5) */}
           <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
+            {widgets.urgent_tasks && <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <ListTodo size={15} className="text-indigo-500" /> Mis tareas urgentes
@@ -532,10 +613,10 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* ── Mis proyectos ─── */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
+            {widgets.projects && <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <FolderKanban size={15} className="text-indigo-500" /> Mis proyectos activos
@@ -556,7 +637,7 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* ── Right: actividad reciente ──── (col 2/5) */}
@@ -587,7 +668,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Actividad reciente */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
+            {widgets.activity && <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm">
               <div className="px-4 pt-4 pb-2">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <Activity size={15} className="text-indigo-500" /> Actividad reciente
@@ -623,13 +704,13 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               )}
-            </div>
+            </div>}
 
           </div>
         </div>
 
         {/* ── Sección de Gráficas ────────────────────────────────────── */}
-        {(hoursPerDay.length > 0 || projectProgress.length > 0) && (
+        {widgets.charts && (hoursPerDay.length > 0 || projectProgress.length > 0) && (
           <div>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={16} className="text-indigo-500" />
