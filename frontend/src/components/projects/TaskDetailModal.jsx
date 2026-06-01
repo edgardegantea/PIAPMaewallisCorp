@@ -10,6 +10,8 @@ import {
   ArrowRight, Circle, RefreshCw, Timer, Paperclip, Download,
   FileText, Image, Archive,
 } from 'lucide-react';
+import RichTextEditor from '../RichTextEditor';
+import RichTextRenderer from '../RichTextRenderer';
 import { deadlineInfo, formatTime } from '../../utils/deadline';
 
 // ── Constantes ───────────────────────────────────────────────────────────────
@@ -760,11 +762,18 @@ export default function TaskDetailModal({ task, projectId, isManager = true, onC
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Descripción</label>
-                <textarea rows={3} value={form.description || ''}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none
-                             bg-white dark:bg-slate-700 dark:text-slate-100" />
+                {isManager ? (
+                  <RichTextEditor
+                    value={form.description || ''}
+                    onChange={(html) => setForm(f => ({ ...f, description: html }))}
+                    placeholder="Describe la tarea, criterios de aceptación, contexto…"
+                    minHeight={100}
+                  />
+                ) : (
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-700/30">
+                    <RichTextRenderer content={form.description} />
+                  </div>
+                )}
               </div>
 
               {/* Multi-assignee */}

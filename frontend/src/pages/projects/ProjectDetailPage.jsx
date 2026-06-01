@@ -55,6 +55,7 @@ import CustomFieldsView from '../../components/projects/CustomFieldsView';
 import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
 import HillChart from '../../components/projects/HillChart';
 import WhatIfView from '../../components/projects/WhatIfView';
+import TaskListView from '../../components/projects/TaskListView';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ const ALL_TABS = [
   { id: 'backlog',       label: 'Backlog',       icon: ListChecks,    managerOnly: false, group: 'scrum'      },
   { id: 'planning',      label: 'Planificación', icon: Layers,        managerOnly: true,  group: 'scrum'      },
   { id: 'kanban',        label: 'Kanban',        icon: ListChecks,    managerOnly: false, group: 'scrum'      },
+  { id: 'lista',         label: 'Lista',         icon: ScrollText,    managerOnly: false, group: 'scrum'      },
   { id: 'metrics',       label: 'Métricas',      icon: TrendingUp,    managerOnly: false, group: 'control'    },
   { id: 'milestones',    label: 'Hitos',         icon: Flag,          managerOnly: false, group: 'control'    },
   { id: 'timeline',      label: 'Tiempo',        icon: Calendar,      managerOnly: true,  group: 'control'    },
@@ -420,6 +422,7 @@ export default function ProjectDetailPage() {
             {tab === 'backlog'       && <BacklogList         projectId={id} isManager={isManager} />}
             {tab === 'planning'      && <SprintPlanningView  projectId={id} />}
             {tab === 'kanban'        && <KanbanBoard         projectId={id} isManager={isManager} />}
+            {tab === 'lista'         && <TaskListView        projectId={id} isManager={isManager} />}
             {tab === 'timeline'      && <GanttView           projectId={id} project={project} />}
             {tab === 'metrics'       && <SprintMetrics         projectId={id} />}
             {tab === 'milestones'    && <MilestoneList        projectId={id} isManager={isManager} />}

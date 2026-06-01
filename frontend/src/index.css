@@ -33,3 +33,42 @@ body {
   /* Forzar colores claros */
   body { background: #fff !important; color: #000 !important; }
 }
+
+/* ── TipTap Rich Text Editor ─────────────────────────────────── */
+.rich-editor .ProseMirror { outline: none; }
+.rich-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: #94a3b8; content: attr(data-placeholder); float: left; pointer-events: none; height: 0;
+}
+.rich-editor .ProseMirror h2 { @apply text-lg font-bold text-slate-800 dark:text-slate-100 mt-3 mb-1; }
+.rich-editor .ProseMirror h3 { @apply text-base font-semibold text-slate-700 dark:text-slate-200 mt-2 mb-1; }
+.rich-editor .ProseMirror ul  { @apply list-disc pl-5 space-y-0.5 my-2; }
+.rich-editor .ProseMirror ol  { @apply list-decimal pl-5 space-y-0.5 my-2; }
+.rich-editor .ProseMirror li  { @apply text-sm text-slate-700 dark:text-slate-200; }
+.rich-editor .ProseMirror ul[data-type="taskList"] { list-style: none; padding: 0; }
+.rich-editor .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0; }
+.rich-editor .ProseMirror ul[data-type="taskList"] li input[type="checkbox"] { margin-top: 3px; accent-color: #6366f1; }
+.rich-editor .ProseMirror blockquote { @apply border-l-4 border-indigo-300 dark:border-indigo-700 pl-3 italic text-slate-500 dark:text-slate-400 my-2; }
+.rich-editor .ProseMirror code     { @apply bg-slate-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded text-xs font-mono; }
+.rich-editor .ProseMirror pre      { @apply bg-slate-900 text-slate-100 p-3 rounded-lg my-2 overflow-x-auto; }
+.rich-editor .ProseMirror pre code { @apply bg-transparent text-slate-100 p-0; }
+.rich-editor .ProseMirror a       { @apply text-indigo-600 dark:text-indigo-400 underline; }
+.rich-editor .ProseMirror hr      { @apply border-slate-200 dark:border-slate-600 my-3; }
+.rich-editor .ProseMirror mark    { @apply bg-yellow-200 dark:bg-yellow-800/50 rounded px-0.5; }
+.rich-editor .ProseMirror strong  { @apply font-bold text-slate-800 dark:text-slate-100; }
+.rich-editor .ProseMirror em      { @apply italic; }
+
+/* Rich text renderer (read-only) */
+.rich-render h2 { @apply text-lg font-bold text-slate-800 dark:text-slate-100 mt-3 mb-1; }
+.rich-render h3 { @apply text-base font-semibold text-slate-700 dark:text-slate-200 mt-2 mb-1; }
+.rich-render ul { @apply list-disc pl-5 space-y-0.5 my-2; }
+.rich-render ol { @apply list-decimal pl-5 space-y-0.5 my-2; }
+.rich-render li { @apply text-sm; }
+.rich-render ul[data-type="taskList"] { list-style: none; padding: 0; }
+.rich-render ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0; }
+.rich-render blockquote { @apply border-l-4 border-indigo-300 dark:border-indigo-700 pl-3 italic text-slate-500 my-2; }
+.rich-render code  { @apply bg-slate-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded text-xs font-mono; }
+.rich-render pre   { @apply bg-slate-900 text-slate-100 p-3 rounded-lg my-2 overflow-x-auto; }
+.rich-render a     { @apply text-indigo-600 dark:text-indigo-400 underline; }
+.rich-render hr    { @apply border-slate-200 dark:border-slate-600 my-3; }
+.rich-render mark  { @apply bg-yellow-200 dark:bg-yellow-800/50 rounded px-0.5; }
+.rich-render strong { @apply font-bold; }

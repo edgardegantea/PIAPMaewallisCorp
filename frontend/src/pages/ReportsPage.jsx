@@ -8,8 +8,118 @@ import {
 } from 'recharts';
 import {
   FolderKanban, CheckCircle2, AlertTriangle, Clock,
-  TrendingUp, DollarSign, Flag, Download, Calendar,
+  TrendingUp, DollarSign, Flag, Download, Calendar, FileSpreadsheet, FileText,
 } from 'lucide-react';
+
+/* ── PDF export (jsPDF + autoTable) ─────────────────────────────── */
+async function exportTimePDF(timeData, from, to, projectLabel = 'Todos') {
+  const { jsPDF } = await import('jspdf');
+  const autoTable  = (await import('jspdf-autotable')).default;
+
+  const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const now  = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Header
+  doc.setFillColor(99, 102, 241);
+  doc.rect(0, 0, 297, 18, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Reporte de Horas Registradas', 14, 11);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Período: ${from} → ${to}  |  Proyecto: ${projectLabel}  |  Generado: ${now}`, 14, 16);
+
+  // Summary by user
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumen por usuario', 14, 26);
+
+  autoTable(doc, {
+    startY: 29,
+    head: [['Usuario', 'Registros', 'Horas']],
+    body: [
+      ...(timeData.by_user || []).map(u => [u.user_name, u.entries, `${parseFloat(u.total_hours).toFixed(1)}h`]),
+      [{ content: 'TOTAL', styles: { fontStyle: 'bold' } }, '', { content: `${timeData.grand_total}h`, styles: { fontStyle: 'bold', textColor: [99, 102, 241] } }],
+    ],
+    theme: 'striped',
+    headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 25, halign: 'center' }, 2: { cellWidth: 25, halign: 'right' } },
+  });
+
+  // Detail table
+  const afterSummary = doc.lastAutoTable.finalY + 6;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Detalle (${timeData.rows?.length ?? 0} registros)`, 14, afterSummary);
+
+  autoTable(doc, {
+    startY: afterSummary + 3,
+    head: [['Fecha', 'Usuario', 'Proyecto', 'Tarea', 'Horas', 'Descripción']],
+    body: (timeData.rows || []).map(r => [
+      r.work_date,
+      r.user_name,
+      `${r.project_code} — ${r.project_name}`,
+      r.task_title,
+      `${parseFloat(r.hours).toFixed(1)}h`,
+      r.description || '',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [15, 118, 110], fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 60 },
+      4: { cellWidth: 16, halign: 'right' },
+      5: { cellWidth: 'auto' },
+    },
+  });
+
+  // Footer
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    doc.text(`Página ${i} de ${pages}`, 283, 205, { align: 'right' });
+  }
+
+  doc.save(`reporte_horas_${from}_${to}.pdf`);
+}
+
+/* ── Excel export ────────────────────────────────────────────────── */
+async function exportTimeExcel(timeData, from, to) {
+  const XLSX = await import('xlsx');
+  const wb   = XLSX.utils.book_new();
+
+  // Summary sheet
+  const summaryData = [
+    ['Reporte de Horas', `${from} → ${to}`],
+    [],
+    ['Usuario', 'Registros', 'Horas'],
+    ...(timeData.by_user || []).map(u => [u.user_name, Number(u.entries), parseFloat(u.total_hours)]),
+    [],
+    ['TOTAL', '', parseFloat(timeData.grand_total)],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Resumen');
+
+  // Detail sheet
+  const detailData = [
+    ['Fecha', 'Usuario', 'Email', 'Proyecto', 'Código', 'Tarea', 'Estado tarea', 'Horas', 'Descripción'],
+    ...(timeData.rows || []).map(r => [
+      r.work_date, r.user_name, r.email,
+      r.project_name, r.project_code,
+      r.task_title, r.task_status,
+      parseFloat(r.hours), r.description || '',
+    ]),
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailData), 'Detalle');
+
+  XLSX.writeFile(wb, `reporte_horas_${from}_${to}.xlsx`);
+}
 
 /* ── helpers ───────────────────────────────────────────────────── */
 const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -235,10 +345,23 @@ export default function ReportsPage() {
               )}
             </div>
             {timeData && (
-              <button onClick={exportTimeCSV}
-                className="flex items-center gap-1.5 text-xs border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg transition-colors print:hidden">
-                <Download size={12} /> Exportar CSV
-              </button>
+              <div className="flex items-center gap-2 print:hidden">
+                <button onClick={exportTimeCSV}
+                  className="flex items-center gap-1.5 text-xs border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg transition-colors">
+                  <Download size={12} /> CSV
+                </button>
+                <button onClick={() => exportTimeExcel(timeData, timeFrom, timeTo)}
+                  className="flex items-center gap-1.5 text-xs border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-lg transition-colors">
+                  <FileSpreadsheet size={12} /> Excel
+                </button>
+                <button onClick={() => {
+                  const label = projects.find(p => String(p.id) === timeProjectId)?.name || 'Todos';
+                  exportTimePDF(timeData, timeFrom, timeTo, label);
+                }}
+                  className="flex items-center gap-1.5 text-xs border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400 px-3 py-1.5 rounded-lg transition-colors">
+                  <FileText size={12} /> PDF
+                </button>
+              </div>
             )}
           </div>
 
