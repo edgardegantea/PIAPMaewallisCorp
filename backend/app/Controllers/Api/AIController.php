@@ -22,7 +22,7 @@ class AIController extends BaseController
         }
 
         $payload = json_encode([
-            'model'      => 'claude-opus-4-5',
+            'model'      => 'claude-sonnet-4-6',
             'max_tokens' => 1024,
             'messages'   => [['role' => 'user', 'content' => $prompt]],
         ]);
@@ -116,7 +116,7 @@ Descripción: {$p['description']}
 Inicio: {$p['planned_start_date']} — Fin planificado: {$p['planned_end_date']}
 
 Tareas: {$s['total']} total, {$s['done']} completadas, {$s['blocked']} bloqueadas, {$s['overdue']} vencidas.
-Hitos pendientes: {$ctx['milestones'][0]['title']} (vence {$ctx['milestones'][0]['due_date']})
+Hitos pendientes: {$ctx['milestones'][0]['title'] ?? 'Ninguno'} (vence {$ctx['milestones'][0]['due_date'] ?? 'N/A'})
 Riesgos activos: {implode('; ', array_slice($risks, 0, 3))}
 
 Genera el resumen ejecutivo enfocado en: avance general, riesgos principales y recomendaciones inmediatas.
