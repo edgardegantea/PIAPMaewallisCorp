@@ -526,8 +526,13 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('attendance/check-in',              'Api\AttendanceController::checkIn');
     $routes->post('attendance/check-out',             'Api\AttendanceController::checkOut');
     $routes->get('attendance/my',                     'Api\AttendanceController::myRecords');
+    // Admin
+    $routes->get('attendance/today',                  'Api\AttendanceController::today');
+    $routes->get('attendance/users-list',             'Api\AttendanceController::usersList');
     $routes->get('attendance/records',                'Api\AttendanceController::allRecords');
+    $routes->post('attendance/records',               'Api\AttendanceController::createRecord');
     $routes->patch('attendance/records/(:num)',        'Api\AttendanceController::updateRecord/$1');
+    $routes->delete('attendance/records/(:num)',       'Api\AttendanceController::deleteRecord/$1');
 });
 
 // Git webhooks (public — verified by signature)
