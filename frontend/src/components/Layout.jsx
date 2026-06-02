@@ -4,14 +4,16 @@ import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { projectsAPI } from '../services/projectsAPI';
 import { useActiveTimer, formatElapsed } from '../hooks/useTimer';
+import useSSENotifications from '../hooks/useSSENotifications';
 import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Tag, User, LogOut,
   Menu, X, ChevronRight, BarChart2, Building2, Shield, Lock,
   Bell, AlertTriangle, Clock, Flag, Search, CheckSquare,
   Sun, Moon, ListTodo, CalendarDays, Square, LayoutTemplate, ScrollText, Briefcase,
-  Target, KeyRound,
+  Target, KeyRound, MapPin,
 } from 'lucide-react';
+import CommandPalette from './CommandPalette';
 
 const SEVERITY_ICON = {
   error:   { icon: AlertTriangle, cls: 'text-red-500' },
@@ -24,7 +26,7 @@ function navSection(label, items) {
 }
 
 export default function Layout({ children }) {
-  const { user, logout }        = useAuthStore();
+  const { user, logout, token } = useAuthStore();
   const { isDark, toggleTheme } = useThemeStore();
   const location                = useLocation();
   const navigate                = useNavigate();
@@ -68,6 +70,9 @@ export default function Layout({ children }) {
   const [searchSelectedIdx, setSearchSelectedIdx] = useState(-1);
   const searchRef      = useRef(null);
   const searchInputRef = useRef(null);
+
+  // Command Palette
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Flat ordered list for keyboard navigation
   const SEARCH_CATS = ['projects', 'tasks', 'milestones', 'users', 'docs'];
@@ -155,12 +160,36 @@ export default function Layout({ children }) {
     setUserNotifs(prev => prev.filter(n => n.id !== id));
   };
 
-  // Initial load + poll every 30 s
+  // Initial load + poll every 60 s as SSE fallback
   useEffect(() => {
     loadNotifications();
-    const id = setInterval(loadNotifications, 30_000);
+    const id = setInterval(loadNotifications, 60_000);
     return () => clearInterval(id);
   }, [loadNotifications]);
+
+  // SSE — real-time notification push (replaces most polling)
+  useSSENotifications({
+    token,
+    enabled: !!token,
+    onUpdate: ({ unread_user, alert_count }) => {
+      // If unread count increased, reload full list and show toast
+      setUserUnread((prev) => {
+        if (unread_user > prev) {
+          const diff = unread_user - prev;
+          setBellRinging(true);
+          setTimeout(() => setBellRinging(false), 1800);
+          toast.info(`${diff} nueva${diff !== 1 ? 's' : ''} notificación${diff !== 1 ? 'es' : ''}`, { duration: 4000 });
+          if (notifOpen) loadUserNotifs();
+        }
+        return unread_user;
+      });
+      // Refresh full alert list if alert count changed
+      setNotifCount((prev) => {
+        if (alert_count !== prev) loadNotifications();
+        return alert_count;
+      });
+    },
+  });
 
   // Outside click + Ctrl/Cmd+K
   useEffect(() => {
@@ -171,8 +200,7 @@ export default function Layout({ children }) {
     const onKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
+        setPaletteOpen(true);
       }
       if (e.key === 'Escape') { setSearchOpen(false); searchInputRef.current?.blur(); }
     };
@@ -227,12 +255,13 @@ export default function Layout({ children }) {
 
   const sections = [
     navSection('Principal', [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard'   },
-      { to: '/portfolio', icon: Briefcase,        label: 'Portfolio'   },
-      { to: '/projects',  icon: FolderKanban,    label: 'Proyectos'   },
-      { to: '/my-tasks',  icon: ListTodo,         label: 'Mis Tareas'  },
-      { to: '/calendar',  icon: CalendarDays,     label: 'Calendario'  },
-      { to: '/reports',   icon: BarChart2,        label: 'Reportes'   },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'   },
+      { to: '/portfolio',  icon: Briefcase,       label: 'Portfolio'   },
+      { to: '/projects',   icon: FolderKanban,   label: 'Proyectos'   },
+      { to: '/my-tasks',   icon: ListTodo,        label: 'Mis Tareas'  },
+      { to: '/calendar',   icon: CalendarDays,    label: 'Calendario'  },
+      { to: '/attendance', icon: MapPin,          label: 'Asistencia'  },
+      { to: '/reports',    icon: BarChart2,       label: 'Reportes'    },
     ]),
     navSection('Catálogos', [
       { to: '/categories', icon: Tag,            label: 'Categorías' },
@@ -373,89 +402,17 @@ export default function Layout({ children }) {
             <Menu size={20} />
           </button>
 
-          {/* Global search */}
-          <div className="relative flex-1 max-w-md" ref={searchRef}>
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              onFocus={() => searchResults && setSearchOpen(true)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={`Buscar… ${isMac ? '⌘K' : 'Ctrl+K'}`}
-              className="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
-            />
-            {searching && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">…</span>
-            )}
-            {searchOpen && searchResults && (
-              <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                {(() => {
-                  const CAT_META = {
-                    projects:   { label: 'Proyectos',  icon: <FolderKanban  size={14} className="text-indigo-500 flex-shrink-0" /> },
-                    tasks:      { label: 'Tareas',     icon: <CheckSquare   size={14} className="text-emerald-500 flex-shrink-0" /> },
-                    milestones: { label: 'Hitos',      icon: <Flag          size={14} className="text-purple-500 flex-shrink-0" /> },
-                    users:      { label: 'Usuarios',   icon: <User          size={14} className="text-rose-400 flex-shrink-0" /> },
-                    docs:       { label: 'Documentos', icon: <LayoutTemplate size={14} className="text-amber-500 flex-shrink-0" /> },
-                  };
-                  let globalIdx = 0;
-                  const sections = SEARCH_CATS.map((cat) => {
-                    const items = searchResults[cat] || [];
-                    if (!items.length) return null;
-                    const { label, icon } = CAT_META[cat] ?? { label: cat, icon: null };
-                    return (
-                      <div key={cat}>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 pt-3 pb-1">{label}</p>
-                        {items.map((item) => {
-                          const idx = globalIdx++;
-                          const isSelected = idx === searchSelectedIdx;
-                          const path = cat === 'projects' ? `/projects/${item.id}`
-                                     : cat === 'users'    ? `/users`
-                                     : cat === 'docs'     ? `/projects/${item.project_id}?tab=technicaldocs`
-                                     : `/projects/${item.project_id}`;
-                          const subtitle = cat === 'users'
-                            ? (item.position || item.role?.replace('_', ' '))
-                            : cat === 'docs'
-                            ? item.project_name
-                            : (item.project_name || item.project_code || null);
-                          return (
-                            <button key={item.id} onClick={() => handleSearchSelect(path)}
-                              className={[
-                                'w-full text-left flex items-center gap-3 px-4 py-2.5 transition-colors',
-                                isSelected
-                                  ? 'bg-indigo-50 dark:bg-indigo-900/40'
-                                  : 'hover:bg-slate-50 dark:hover:bg-slate-700',
-                              ].join(' ')}>
-                              {icon}
-                              <div className="min-w-0">
-                                <p className="text-sm text-slate-700 dark:text-slate-200 truncate font-medium">
-                                  {cat === 'users'
-                                    ? `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.username
-                                    : (item.name || item.title)}
-                                </p>
-                                {subtitle && <p className="text-xs text-slate-400 truncate">{subtitle}</p>}
-                              </div>
-                              {isSelected && <ChevronRight size={12} className="ml-auto text-indigo-400 flex-shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  });
-                  if (flatResults.length === 0) {
-                    return <p className="text-sm text-slate-400 text-center py-6">Sin resultados para "{searchQ}"</p>;
-                  }
-                  return sections;
-                })()}
-                <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-2 flex items-center gap-3">
-                  <span className="text-xs text-slate-400">↑↓ navegar</span>
-                  <span className="text-xs text-slate-400">↵ abrir</span>
-                  <span className="text-xs text-slate-400">Esc cerrar</span>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Global search — opens Command Palette */}
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex items-center gap-2 flex-1 max-w-md px-3 py-1.5 text-sm text-slate-400 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:border-indigo-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors text-left"
+          >
+            <Search size={14} className="flex-shrink-0" />
+            <span className="flex-1">Buscar…</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-slate-400">
+              {isMac ? '⌘K' : 'Ctrl+K'}
+            </kbd>
+          </button>
 
           <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
 
@@ -700,6 +657,9 @@ export default function Layout({ children }) {
           )}
         </main>
       </div>
+
+      {/* Command Palette */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

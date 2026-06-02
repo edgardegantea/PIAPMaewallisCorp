@@ -28,6 +28,7 @@ import PortfolioPage     from './pages/PortfolioPage';
 import OKRsPage          from './pages/OKRsPage';
 import RolesPage         from './pages/RolesPage';
 import GuestPage         from './pages/GuestPage';
+import AttendancePage    from './pages/AttendancePage';
 import PWAInstallPrompt  from './components/PWAInstallPrompt';
 
 function PrivateRoute({ children }) {
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/portfolio"  element={<PrivateRoute><PortfolioPage /></PrivateRoute>} />
         <Route path="/okrs"       element={<PrivateRoute><OKRsPage /></PrivateRoute>} />
         <Route path="/roles"      element={<PrivateRoute><RolesPage /></PrivateRoute>} />
+        <Route path="/attendance" element={<PrivateRoute><AttendancePage /></PrivateRoute>} />
         <Route path="/guest/:token" element={<GuestPage />} />
 
         {/* 404 */}

@@ -11,7 +11,7 @@ import {
   CheckCircle2, Clock, TrendingUp, Calendar, Activity, Layers,
   ScrollText, BookOpen, Milestone, ShieldAlert, CheckSquare, Clapperboard, ClipboardList,
   Tag, ChevronRight, User, Sparkles, MessageSquare, BookOpen as WikiIcon,
-  Target, Webhook, Link2, Upload, TrendingDown,
+  Target, Webhook, Link2, Upload, TrendingDown, GitFork,
 } from 'lucide-react';
 import SprintList from '../../components/projects/SprintList';
 import BacklogList from '../../components/projects/BacklogList';
@@ -56,6 +56,7 @@ import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
 import HillChart from '../../components/projects/HillChart';
 import WhatIfView from '../../components/projects/WhatIfView';
 import TaskListView from '../../components/projects/TaskListView';
+import DependencyGraph from '../../components/projects/DependencyGraph';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ const ALL_TABS = [
   { id: 'metrics',       label: 'Métricas',      icon: TrendingUp,    managerOnly: false, group: 'control'    },
   { id: 'milestones',    label: 'Hitos',         icon: Flag,          managerOnly: false, group: 'control'    },
   { id: 'timeline',      label: 'Tiempo',        icon: Calendar,      managerOnly: true,  group: 'control'    },
+  { id: 'depgraph',      label: 'Dependencias',  icon: GitFork,       managerOnly: false, group: 'control'    },
   { id: 'risks',         label: 'Riesgos',       icon: AlertTriangle, managerOnly: true,  group: 'control'    },
   { id: 'incidents',     label: 'Incidencias',   icon: AlertTriangle, managerOnly: true,  group: 'control'    },
   { id: 'impediments',   label: 'Impedimentos',  icon: ShieldAlert,   managerOnly: false, group: 'control'    },
@@ -424,6 +426,7 @@ export default function ProjectDetailPage() {
             {tab === 'kanban'        && <KanbanBoard         projectId={id} isManager={isManager} />}
             {tab === 'lista'         && <TaskListView        projectId={id} isManager={isManager} />}
             {tab === 'timeline'      && <GanttView           projectId={id} project={project} />}
+            {tab === 'depgraph'      && <DependencyGraph     projectId={id} />}
             {tab === 'metrics'       && <SprintMetrics         projectId={id} />}
             {tab === 'milestones'    && <MilestoneList        projectId={id} isManager={isManager} />}
             {tab === 'workload'      && <WorkloadView         projectId={id} />}

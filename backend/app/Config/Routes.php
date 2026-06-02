@@ -519,6 +519,15 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('technicaldocs/(:num)/approve',         'Api\TechnicalDocsController::approve/$1');
     $routes->post('technicaldocs/(:num)/request-review',  'Api\TechnicalDocsController::requestReview/$1');
     $routes->patch('technicaldocs/(:num)/sort',           'Api\TechnicalDocsController::sort/$1');
+
+    // ── Attendance ────────────────────────────────────────────────────────
+    $routes->get('attendance/locations',              'Api\AttendanceController::indexLocations');
+    $routes->get('attendance/status',                 'Api\AttendanceController::status');
+    $routes->post('attendance/check-in',              'Api\AttendanceController::checkIn');
+    $routes->post('attendance/check-out',             'Api\AttendanceController::checkOut');
+    $routes->get('attendance/my',                     'Api\AttendanceController::myRecords');
+    $routes->get('attendance/records',                'Api\AttendanceController::allRecords');
+    $routes->patch('attendance/records/(:num)',        'Api\AttendanceController::updateRecord/$1');
 });
 
 // Git webhooks (public — verified by signature)
@@ -531,6 +540,13 @@ $routes->get('api/guest/(:alphanum)', 'Api\GuestController::view/$1');
 $routes->get('api/attachments/(:num)/download',         'Api\TaskAttachmentsController::download/$1');
 $routes->get('api/technicaldocs/(:num)/download',       'Api\TechnicalDocsController::download/$1');
 $routes->get('api/tech-doc-versions/(:num)/download',   'Api\TechDocVersionsController::download/$1');
+
+// Attendance location management (admin only)
+$routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) {
+    $routes->post('attendance/locations',              'Api\AttendanceController::createLocation');
+    $routes->patch('attendance/locations/(:num)',      'Api\AttendanceController::updateLocation/$1');
+    $routes->delete('attendance/locations/(:num)',     'Api\AttendanceController::deleteLocation/$1');
+});
 
 // Rutas ADMIN (auth + admin filter)
 $routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) {
