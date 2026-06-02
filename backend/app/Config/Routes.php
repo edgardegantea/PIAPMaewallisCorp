@@ -181,6 +181,7 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
 
     // Notificaciones
     $routes->get('notifications',              'Api\NotificationsController::index');
+    $routes->get('notifications/stream',       'Api\NotificationsController::stream');
     $routes->get('notifications/user',         'Api\NotificationsController::userNotifications');
     $routes->post('notifications/(:num)/read', 'Api\NotificationsController::markRead/$1');
     $routes->post('notifications/read-all',    'Api\NotificationsController::markAllRead');
@@ -218,9 +219,10 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->delete('meetings/(:num)',         'Api\MeetingMinutesController::delete/$1');
 
     // Task Dependencies
-    $routes->get('tasks/(:num)/dependencies',    'Api\TaskDependenciesController::index/$1');
-    $routes->post('tasks/(:num)/dependencies',   'Api\TaskDependenciesController::create/$1');
-    $routes->delete('dependencies/(:num)',        'Api\TaskDependenciesController::delete/$1');
+    $routes->get('tasks/(:num)/dependencies',        'Api\TaskDependenciesController::index/$1');
+    $routes->post('tasks/(:num)/dependencies',       'Api\TaskDependenciesController::create/$1');
+    $routes->delete('dependencies/(:num)',            'Api\TaskDependenciesController::delete/$1');
+    $routes->get('projects/(:num)/dependencies',     'Api\TaskDependenciesController::byProject/$1');
 
     // Subtasks
     $routes->get('tasks/(:num)/subtasks',        'Api\SubtasksController::index/$1');

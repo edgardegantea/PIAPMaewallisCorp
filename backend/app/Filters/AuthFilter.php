@@ -20,6 +20,11 @@ class AuthFilter implements FilterInterface
 
         $header = $request->getHeaderLine('Authorization');
 
+        // SSE (EventSource) cannot send custom headers — accept token as query param fallback
+        if ((! $header || ! str_starts_with($header, 'Bearer ')) && $request->getGet('token')) {
+            $header = 'Bearer ' . $request->getGet('token');
+        }
+
         if (! $header || ! str_starts_with($header, 'Bearer ')) {
             return service('response')
                 ->setStatusCode(401)

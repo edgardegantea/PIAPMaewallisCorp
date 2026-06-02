@@ -148,6 +148,37 @@ class TaskDependenciesController extends BaseController
         return $this->response->setStatusCode(201)->setJSON($row);
     }
 
+    /**
+     * GET /api/projects/:projectId/dependencies
+     * Returns all tasks + all dependency edges for the project — used by the dependency graph view.
+     */
+    public function byProject(int $projectId): ResponseInterface
+    {
+        $db = Database::connect();
+
+        $tasks = $db->query("
+            SELECT t.id, t.title, t.status, t.priority, s.name AS sprint_name
+            FROM tasks t
+            JOIN sprints s ON s.id = t.sprint_id
+            WHERE s.project_id = ? AND t.parent_task_id IS NULL
+            ORDER BY t.status, t.title
+            LIMIT 200
+        ", [$projectId])->getResultArray();
+
+        $edges = $db->query("
+            SELECT td.id, td.task_id, td.blocker_id, td.type
+            FROM task_dependencies td
+            JOIN tasks t ON t.id = td.task_id
+            JOIN sprints s ON s.id = t.sprint_id
+            WHERE s.project_id = ?
+        ", [$projectId])->getResultArray();
+
+        return $this->response->setJSON([
+            'tasks' => $tasks,
+            'edges' => $edges,
+        ]);
+    }
+
     public function delete(int $id): ResponseInterface
     {
         $db  = Database::connect();

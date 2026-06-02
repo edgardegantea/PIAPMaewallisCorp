@@ -195,4 +195,89 @@ class NotificationsController extends BaseController
             ->delete();
         return $this->response->setStatusCode(204)->setBody('');
     }
+
+    /**
+     * GET /notifications/stream
+     *
+     * Server-Sent Events stream. Sends a heartbeat every 20 s and a
+     * "notifications" event whenever the user has new unread notifications
+     * or new system alerts compared to the last check.
+     *
+     * Clients reconnect automatically via the EventSource API.
+     * Max lifetime: 90 s (then close — client reconnects).
+     */
+    public function stream(): void
+    {
+        $userId = Auth::id();
+        if (!$userId) {
+            http_response_code(401);
+            echo "data: {\"error\":\"Unauthorized\"}\n\n";
+            return;
+        }
+
+        // Disable output buffering
+        if (ob_get_level()) ob_end_clean();
+        @ini_set('output_buffering', 'off');
+        @ini_set('zlib.output_compression', false);
+
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('X-Accel-Buffering: no'); // nginx: disable proxy buffering
+
+        $db       = Database::connect();
+        $lastUnread = null;
+        $lastAlertHash = null;
+        $start    = time();
+        $maxAge   = 90; // seconds
+
+        while (!connection_aborted() && (time() - $start) < $maxAge) {
+            // ── User notifications ────────────────────────────────────────
+            $unread = (int) $db->table('user_notifications')
+                ->where('user_id', $userId)
+                ->where('is_read', 0)
+                ->countAllResults();
+
+            // ── System alerts ─────────────────────────────────────────────
+            $today  = date('Y-m-d');
+            $alerts = [];
+
+            $overdue = $db->query("
+                SELECT COUNT(*) AS c FROM projects p
+                WHERE p.is_active = 1 AND p.planned_end_date < ? AND p.status NOT IN ('CERRADO','COMPLETADO')
+            ", [$today])->getRowArray();
+            if (($overdue['c'] ?? 0) > 0) $alerts[] = 'proj_overdue';
+
+            $blocked = $db->query("
+                SELECT COUNT(*) AS c FROM tasks t JOIN sprints s ON s.id = t.sprint_id
+                JOIN projects p ON p.id = s.project_id
+                WHERE t.status = 'BLOQUEADA' AND p.is_active = 1
+            ")->getRowArray();
+            if (($blocked['c'] ?? 0) > 0) $alerts[] = 'tasks_blocked';
+
+            $alertHash = md5(implode(',', $alerts));
+
+            // Only push when something changed
+            if ($unread !== $lastUnread || $alertHash !== $lastAlertHash) {
+                $payload = json_encode([
+                    'unread_user' => $unread,
+                    'alert_count' => count($alerts),
+                    'ts'          => time(),
+                ]);
+                echo "event: notifications\n";
+                echo "data: {$payload}\n\n";
+                $lastUnread    = $unread;
+                $lastAlertHash = $alertHash;
+            } else {
+                // Heartbeat
+                echo ": heartbeat\n\n";
+            }
+
+            flush();
+            sleep(20);
+        }
+
+        // Tell the client to reconnect after 5 s
+        echo "retry: 5000\n\n";
+        flush();
+    }
 }
