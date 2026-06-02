@@ -11,7 +11,7 @@
 import { useEffect, useRef } from 'react';
 
 const SSE_URL = (token) =>
-  `${import.meta.env.VITE_API_URL ?? ''}/api/notifications/stream?token=${encodeURIComponent(token)}`;
+  `${import.meta.env.VITE_API_URL ?? ''}/notifications/stream?token=${encodeURIComponent(token)}`;
 
 export default function useSSENotifications({ token, onUpdate, enabled = true }) {
   const esRef      = useRef(null);
