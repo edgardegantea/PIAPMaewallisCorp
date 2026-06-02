@@ -246,9 +246,9 @@ class AttendanceController extends BaseController
     public function usersList(): ResponseInterface
     {
         $rows = $this->users
-            ->select('id, name, email, first_name, last_name, is_active')
+            ->select('id, username, email, first_name, last_name, is_active')
             ->where('is_active', 1)
-            ->orderBy('name')
+            ->orderBy('first_name')
             ->findAll();
         return $this->response->setJSON($rows);
     }

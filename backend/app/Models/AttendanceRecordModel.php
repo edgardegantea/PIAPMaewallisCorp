@@ -40,7 +40,9 @@ class AttendanceRecordModel extends Model
     /** Admin: all records with user and location info. */
     public function allWithDetails(array $filters = [], int $limit = 50, int $offset = 0): array
     {
-        $b = $this->select('attendance_records.*, attendance_locations.name AS location_name, users.name AS user_name, users.email AS user_email, users.first_name, users.last_name')
+        $b = $this->select("attendance_records.*, attendance_locations.name AS location_name,
+                            CONCAT(users.first_name, ' ', users.last_name) AS user_name,
+                            users.email AS user_email, users.first_name, users.last_name, users.username")
                   ->join('attendance_locations', 'attendance_locations.id = attendance_records.location_id', 'left')
                   ->join('users', 'users.id = attendance_records.user_id', 'left');
 
@@ -87,7 +89,10 @@ class AttendanceRecordModel extends Model
     /** Who is currently checked in (open records with user info). */
     public function presentNow(): array
     {
-        return $this->select('attendance_records.*, users.name AS user_name, users.email AS user_email, users.first_name, users.last_name, attendance_locations.name AS location_name')
+        return $this->select("attendance_records.*,
+                              CONCAT(users.first_name, ' ', users.last_name) AS user_name,
+                              users.email AS user_email, users.first_name, users.last_name, users.username,
+                              attendance_locations.name AS location_name")
                     ->join('users', 'users.id = attendance_records.user_id', 'left')
                     ->join('attendance_locations', 'attendance_locations.id = attendance_records.location_id', 'left')
                     ->where('attendance_records.status', 'open')
