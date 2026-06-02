@@ -255,19 +255,19 @@ export default function Layout({ children }) {
 
   const sections = [
     navSection('Principal', [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'   },
-      { to: '/portfolio',  icon: Briefcase,       label: 'Portfolio'   },
-      { to: '/projects',   icon: FolderKanban,   label: 'Proyectos'   },
-      { to: '/my-tasks',   icon: ListTodo,        label: 'Mis Tareas'  },
-      { to: '/calendar',   icon: CalendarDays,    label: 'Calendario'  },
-      { to: '/attendance', icon: MapPin,          label: 'Asistencia'  },
-      { to: '/reports',    icon: BarChart2,       label: 'Reportes'    },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'  },
+      ...(!isTeamMember ? [{ to: '/portfolio', icon: Briefcase, label: 'Portfolio' }] : []),
+      { to: '/projects',   icon: FolderKanban,    label: 'Proyectos'  },
+      { to: '/my-tasks',   icon: ListTodo,         label: 'Mis Tareas' },
+      { to: '/calendar',   icon: CalendarDays,     label: 'Calendario' },
+      { to: '/attendance', icon: MapPin,           label: 'Asistencia' },
+      ...(!isTeamMember ? [{ to: '/reports', icon: BarChart2, label: 'Reportes' }] : []),
     ]),
-    navSection('Catálogos', [
+    ...(!isTeamMember ? [navSection('Catálogos', [
       { to: '/categories', icon: Tag,            label: 'Categorías' },
       { to: '/templates',  icon: LayoutTemplate, label: 'Plantillas' },
       { to: '/okrs',       icon: Target,         label: 'OKRs'       },
-    ]),
+    ])] : []),
     ...(isAdmin ? [navSection('Administración', [
       { to: '/users',            icon: Shield,     label: 'Usuarios'   },
       { to: '/permissions',      icon: Lock,       label: 'Permisos'   },
