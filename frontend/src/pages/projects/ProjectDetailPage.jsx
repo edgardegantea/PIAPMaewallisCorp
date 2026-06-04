@@ -11,7 +11,7 @@ import {
   CheckCircle2, Clock, TrendingUp, Calendar, Activity, Layers,
   ScrollText, BookOpen, Milestone, ShieldAlert, CheckSquare, Clapperboard, ClipboardList,
   Tag, ChevronRight, User, Sparkles, MessageSquare, BookOpen as WikiIcon,
-  Target, Webhook, Link2, Upload, TrendingDown, GitFork, Briefcase,
+  Target, Webhook, Link2, Upload, TrendingDown, GitFork, Briefcase, DollarSign,
 } from 'lucide-react';
 import SprintList from '../../components/projects/SprintList';
 import BacklogList from '../../components/projects/BacklogList';
@@ -56,6 +56,7 @@ import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
 import HillChart from '../../components/projects/HillChart';
 import WhatIfView from '../../components/projects/WhatIfView';
 import BudgetView from '../../components/projects/BudgetView';
+import PaymentsView from '../../components/projects/PaymentsView';
 import TaskListView from '../../components/projects/TaskListView';
 import DependencyGraph from '../../components/projects/DependencyGraph';
 
@@ -139,6 +140,7 @@ const ALL_TABS = [
   { id: 'hillchart',     label: 'Hill Chart',    icon: TrendingUp,    managerOnly: false, group: 'control'    },
   { id: 'whatif',        label: 'What-If',       icon: Sparkles,      managerOnly: true,  group: 'control'    },
   { id: 'budget',        label: 'Presupuesto',   icon: Briefcase,     managerOnly: true,  group: 'control'    },
+  { id: 'payments',      label: 'Pagos',         icon: DollarSign,    managerOnly: true,  group: 'control'    },
 ];
 
 /** Ordered group definitions for the tab bar */
@@ -469,6 +471,7 @@ export default function ProjectDetailPage() {
             {tab === 'hillchart'     && <HillChart           projectId={id} isManager={isManager} />}
             {tab === 'whatif'        && <WhatIfView          projectId={id} isManager={isManager} />}
             {tab === 'budget'        && <BudgetView          projectId={id} isManager={isManager} />}
+            {tab === 'payments'      && <PaymentsView        projectId={id} isManager={isManager} />}
           </div>
         </div>
 

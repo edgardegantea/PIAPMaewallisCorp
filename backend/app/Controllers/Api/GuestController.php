@@ -38,21 +38,63 @@ class GuestController extends BaseController
 
         $sprints    = $db->table('sprints')->where('project_id', $projectId)->orderBy('number')->get()->getResultArray();
         $milestones = $db->table('milestones')->where('project_id', $projectId)->orderBy('due_date')->get()->getResultArray();
-        $risks      = $db->query("SELECT description, probability, impact, status FROM risks WHERE project_id = ? AND status = 'ACTIVO'", [$projectId])->getResultArray();
-        $taskStats  = $db->query("
+
+        $risks = $db->query(
+            "SELECT description, probability, impact, status FROM risks WHERE project_id = ? AND status = 'ACTIVO'",
+            [$projectId]
+        )->getResultArray();
+
+        $taskStats = $db->query("
             SELECT t.status, COUNT(*) AS cnt
             FROM tasks t JOIN sprints s ON s.id = t.sprint_id
             WHERE s.project_id = ? AND t.parent_task_id IS NULL
             GROUP BY t.status
         ", [$projectId])->getResultArray();
 
+        // Budget items summary
+        $budgetSummary = $db->query("
+            SELECT category,
+                   COALESCE(SUM(planned_amount),0) AS planned,
+                   COALESCE(SUM(actual_amount),0)  AS actual
+            FROM budget_items WHERE project_id = ?
+            GROUP BY category ORDER BY category
+        ", [$projectId])->getResultArray();
+
+        // Payment schedule (only pending/overdue/paid for client)
+        $payments = $db->query("
+            SELECT concept, amount, due_date, status, paid_at
+            FROM payment_schedules WHERE project_id = ?
+            ORDER BY due_date
+        ", [$projectId])->getResultArray();
+
+        // Team members (name + role only, no personal data)
+        $members = $db->query("
+            SELECT CONCAT(u.first_name,' ',u.last_name) AS name,
+                   u.position, pm.role AS project_role
+            FROM project_members pm
+            JOIN users u ON u.id = pm.user_id
+            WHERE pm.project_id = ?
+            ORDER BY u.first_name
+        ", [$projectId])->getResultArray();
+
+        // Public documents (no file path)
+        $documents = $db->query("
+            SELECT title, type, created_at
+            FROM project_documents WHERE project_id = ?
+            ORDER BY created_at DESC LIMIT 10
+        ", [$projectId])->getResultArray();
+
         return $this->response->setJSON([
-            'project'    => $project,
-            'sprints'    => $sprints,
-            'milestones' => $milestones,
-            'risks'      => $risks,
-            'task_stats' => $taskStats,
-            'invite'     => ['label' => $invite['label'], 'expires_at' => $invite['expires_at']],
+            'project'        => $project,
+            'sprints'        => $sprints,
+            'milestones'     => $milestones,
+            'risks'          => $risks,
+            'task_stats'     => $taskStats,
+            'budget_summary' => $budgetSummary,
+            'payments'       => $payments,
+            'members'        => $members,
+            'documents'      => $documents,
+            'invite'         => ['label' => $invite['label'], 'expires_at' => $invite['expires_at']],
         ]);
     }
 

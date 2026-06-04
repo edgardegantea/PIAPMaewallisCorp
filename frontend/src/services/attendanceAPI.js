@@ -49,3 +49,12 @@ export const budgetAPI = {
   update: (id, data)        => api.patch(`/budget/${id}`, data),
   delete: (id)              => api.delete(`/budget/${id}`),
 };
+
+// ── Cronograma de pagos ───────────────────────────────────────────────────────
+export const paymentsAPI = {
+  get:      (projectId)       => api.get(`/projects/${projectId}/payments`),
+  create:   (projectId, data) => api.post(`/projects/${projectId}/payments`, data),
+  update:   (id, data)        => api.patch(`/payments/${id}`, data),
+  markPaid: (id, data)        => api.patch(`/payments/${id}/mark-paid`, data),
+  delete:   (id)              => api.delete(`/payments/${id}`),
+};

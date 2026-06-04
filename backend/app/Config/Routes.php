@@ -532,11 +532,18 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('leave-requests',         'Api\LeaveRequestsController::create');
     $routes->delete('leave-requests/(:num)','Api\LeaveRequestsController::cancel/$1');
 
-    // ── Presupuesto de proyecto (miembros autenticados) ───────────────────
+    // ── Presupuesto de proyecto ───────────────────────────────────────────
     $routes->get('projects/(:num)/budget',  'Api\BudgetController::index/$1');
     $routes->post('projects/(:num)/budget', 'Api\BudgetController::create/$1');
     $routes->patch('budget/(:num)',         'Api\BudgetController::update/$1');
     $routes->delete('budget/(:num)',        'Api\BudgetController::delete/$1');
+
+    // ── Cronograma de pagos ───────────────────────────────────────────────
+    $routes->get('projects/(:num)/payments',        'Api\PaymentScheduleController::index/$1');
+    $routes->post('projects/(:num)/payments',       'Api\PaymentScheduleController::create/$1');
+    $routes->patch('payments/(:num)',               'Api\PaymentScheduleController::update/$1');
+    $routes->patch('payments/(:num)/mark-paid',     'Api\PaymentScheduleController::markPaid/$1');
+    $routes->delete('payments/(:num)',              'Api\PaymentScheduleController::delete/$1');
 });
 
 // Git webhooks (public — verified by signature)
