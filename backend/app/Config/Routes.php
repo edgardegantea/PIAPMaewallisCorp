@@ -526,6 +526,17 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('attendance/check-in',   'Api\AttendanceController::checkIn');
     $routes->post('attendance/check-out',  'Api\AttendanceController::checkOut');
     $routes->get('attendance/my',          'Api\AttendanceController::myRecords');
+
+    // ── Solicitudes de permiso (usuario) ─────────────────────────────────
+    $routes->get('leave-requests/my',       'Api\LeaveRequestsController::my');
+    $routes->post('leave-requests',         'Api\LeaveRequestsController::create');
+    $routes->delete('leave-requests/(:num)','Api\LeaveRequestsController::cancel/$1');
+
+    // ── Presupuesto de proyecto (miembros autenticados) ───────────────────
+    $routes->get('projects/(:num)/budget',  'Api\BudgetController::index/$1');
+    $routes->post('projects/(:num)/budget', 'Api\BudgetController::create/$1');
+    $routes->patch('budget/(:num)',         'Api\BudgetController::update/$1');
+    $routes->delete('budget/(:num)',        'Api\BudgetController::delete/$1');
 });
 
 // Git webhooks (public — verified by signature)
@@ -541,6 +552,10 @@ $routes->get('api/tech-doc-versions/(:num)/download',   'Api\TechDocVersionsCont
 
 // Rutas ADMIN (auth + admin filter)
 $routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) {
+    // Project bulk import
+    $routes->post('projects/import/csv',            'Api\ProjectImportController::import');
+    $routes->get('projects/import/csv-template',    'Api\ProjectImportController::template');
+
     // User management
     $routes->post('users',                          'Api\UsersController::create');
     $routes->patch('users/(:num)',                  'Api\UsersController::update/$1');
@@ -566,4 +581,16 @@ $routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) 
     // Dashboard
     $routes->get('attendance/today',                 'Api\AttendanceController::today');
     $routes->get('attendance/users-list',            'Api\AttendanceController::usersList');
+    // Horarios
+    $routes->get('work-schedule',                    'Api\WorkScheduleController::getDefault');
+    $routes->put('work-schedule',                    'Api\WorkScheduleController::saveDefault');
+    $routes->get('work-schedule/user/(:num)',         'Api\WorkScheduleController::getForUser/$1');
+    $routes->put('work-schedule/user/(:num)',         'Api\WorkScheduleController::saveForUser/$1');
+    $routes->delete('work-schedule/user/(:num)',      'Api\WorkScheduleController::deleteForUser/$1');
+    // Reporte mensual
+    $routes->get('attendance/report',                'Api\WorkScheduleController::report');
+    // Permisos (admin)
+    $routes->get('leave-requests',                   'Api\LeaveRequestsController::all');
+    $routes->patch('leave-requests/(:num)/approve',  'Api\LeaveRequestsController::approve/$1');
+    $routes->patch('leave-requests/(:num)/reject',   'Api\LeaveRequestsController::reject/$1');
 });

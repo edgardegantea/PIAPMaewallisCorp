@@ -5,9 +5,10 @@ import Layout from '../../components/Layout';
 import { toast } from 'sonner';
 import {
   Plus, Search, FolderKanban, Filter, X, Star, User,
-  Calendar, TrendingUp, AlertTriangle, CheckCircle2,
+  Calendar, TrendingUp, AlertTriangle, CheckCircle2, Upload,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import ProjectImportModal from '../../components/projects/ProjectImportModal';
 
 // ─── Static maps ──────────────────────────────────────────────────────────────
 
@@ -185,7 +186,8 @@ function ProjectCard({ p, isFavorite, onToggleFavorite }) {
 
 export default function ProjectsListPage() {
   const authUser = useAuthStore((s) => s.user);
-  const canCreate = authUser?.role !== 'TEAM_MEMBER';
+  const canCreate  = authUser?.role !== 'TEAM_MEMBER';
+  const isAdmin    = authUser?.role === 'ADMIN';
 
   // Load persisted filters from localStorage (lazy initializers)
   const loadFilter = (key, fallback) => {
@@ -205,6 +207,7 @@ export default function ProjectsListPage() {
   const [onlyFavs,    setOnlyFavs]    = useState(() => loadFilter('onlyFavs', false));
   const [onlyMine,    setOnlyMine]    = useState(() => loadFilter('onlyMine', false));
   const [myProjects,  setMyProjects]  = useState([]);
+  const [showImport,  setShowImport]  = useState(false);
 
   // Persist filters whenever they change
   useEffect(() => {
@@ -292,6 +295,7 @@ export default function ProjectsListPage() {
   }, [statsBase]);
 
   return (
+    <>
     <Layout>
       <div className="p-4 sm:p-6 space-y-5">
 
@@ -305,12 +309,23 @@ export default function ProjectsListPage() {
             </p>
           </div>
           {canCreate && (
-            <Link
-              to="/projects/new"
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700
-                text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm shadow-sm">
-              <Plus size={16} /> Nuevo Proyecto
-            </Link>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="flex items-center gap-2 border border-slate-200 dark:border-slate-600
+                    hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300
+                    font-medium px-4 py-2.5 rounded-lg transition-colors text-sm shadow-sm">
+                  <Upload size={16} /> Importar CSV
+                </button>
+              )}
+              <Link
+                to="/projects/new"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700
+                  text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm shadow-sm">
+                <Plus size={16} /> Nuevo Proyecto
+              </Link>
+            </div>
           )}
         </div>
 
@@ -567,5 +582,13 @@ export default function ProjectsListPage() {
 
       </div>
     </Layout>
+
+    {showImport && (
+      <ProjectImportModal
+        onClose={() => setShowImport(false)}
+        onImported={() => { load(); setShowImport(false); }}
+      />
+    )}
+    </>
   );
 }

@@ -1,6 +1,10 @@
 import api from './api';
 
 export const projectsAPI = {
+  // Importación masiva de proyectos (admin)
+  importProjectsCSV:     (form) => api.post('/admin/projects/import/csv', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  downloadProjectsTemplate: ()  => api.get('/admin/projects/import/csv-template', { responseType: 'blob' }),
+
   // Proyectos
   getProjects:    (p)  => api.get('/projects', { params: p }),
   getProject:     (id) => api.get(`/projects/${id}`),

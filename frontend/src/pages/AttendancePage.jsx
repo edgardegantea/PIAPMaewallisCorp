@@ -5,8 +5,10 @@ import {
   AlertTriangle, RefreshCw, Navigation, Pencil, X, Save,
   Users, Filter, Plus, Trash2, Download, ChevronDown, ChevronUp,
   UserCheck, UserX, Activity, TrendingUp, Eye, Calendar,
+  FileText, Settings, CalendarDays, ChevronLeft, ChevronRight,
+  Sun, Moon, Briefcase, HeartPulse, MoreHorizontal,
 } from 'lucide-react';
-import { attendanceAPI } from '../services/attendanceAPI';
+import { attendanceAPI, scheduleAPI, leaveAPI } from '../services/attendanceAPI';
 import { useAuthStore } from '../stores/authStore';
 import Layout from '../components/Layout';
 
@@ -471,6 +473,27 @@ export default function AttendancePage() {
   const [editLoc,      setEditLoc]      = useState(null);
   const [showLocModal, setShowLocModal] = useState(false);
 
+  // ── Permisos ──────────────────────────────────────────────────────────────
+  const [myLeaves,      setMyLeaves]      = useState([]);
+  const [loadingLeaves, setLoadingLeaves] = useState(false);
+  const [allLeaves,     setAllLeaves]     = useState([]);
+  const [loadingAllL,   setLoadingAllL]   = useState(false);
+  const [leaveFilters,  setLeaveFilters]  = useState({ status: '', type: '', user_id: '' });
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+
+  // ── Horario ───────────────────────────────────────────────────────────────
+  const [schedule,       setSchedule]       = useState(null);
+  const [loadingSchedule,setLoadingSchedule]= useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [selectedSchUser,setSelectedSchUser]= useState('');
+
+  // ── Reporte ───────────────────────────────────────────────────────────────
+  const [reportData,    setReportData]    = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [reportYear,    setReportYear]    = useState(new Date().getFullYear());
+  const [reportMonth,   setReportMonth]   = useState(new Date().getMonth() + 1);
+  const [reportUser,    setReportUser]    = useState('');
+
   // Loaders
   const loadStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -517,12 +540,52 @@ export default function AttendancePage() {
     try { const { data } = await attendanceAPI.usersList(); setUsersList(data); } catch {}
   }, []);
 
-  useEffect(() => { loadStatus(); loadMyRecords(); }, []);
+  const loadMyLeaves = useCallback(async () => {
+    setLoadingLeaves(true);
+    try { const { data } = await leaveAPI.my(); setMyLeaves(data); }
+    catch { toast.error('Error al cargar solicitudes'); }
+    finally { setLoadingLeaves(false); }
+  }, []);
+
+  const loadAllLeaves = useCallback(async () => {
+    setLoadingAllL(true);
+    try {
+      const params = Object.fromEntries(Object.entries(leaveFilters).filter(([,v]) => v !== ''));
+      const { data } = await leaveAPI.all(params);
+      setAllLeaves(data);
+    } catch { toast.error('Error al cargar solicitudes'); }
+    finally { setLoadingAllL(false); }
+  }, [leaveFilters]);
+
+  const loadSchedule = useCallback(async (uid = '') => {
+    setLoadingSchedule(true);
+    try {
+      const { data } = uid ? await scheduleAPI.getForUser(uid) : await scheduleAPI.getDefault();
+      setSchedule(data);
+    } catch { toast.error('Error al cargar horario'); }
+    finally { setLoadingSchedule(false); }
+  }, []);
+
+  const loadReport = useCallback(async () => {
+    setLoadingReport(true);
+    try {
+      const params = { year: reportYear, month: reportMonth };
+      if (reportUser) params.user_id = reportUser;
+      const { data } = await attendanceAPI.report(params);
+      setReportData(data);
+    } catch { toast.error('Error al generar reporte'); }
+    finally { setLoadingReport(false); }
+  }, [reportYear, reportMonth, reportUser]);
+
+  useEffect(() => { loadStatus(); loadMyRecords(); loadMyLeaves(); }, []);
   useEffect(() => {
     if (!isAdmin) return;
     if (tab === 'dashboard')   { loadToday(); }
     if (tab === 'registros')   { loadRecords(0); loadUsers(); loadLocations(); }
     if (tab === 'ubicaciones') { loadLocations(); }
+    if (tab === 'permisos')    { loadAllLeaves(); loadUsers(); }
+    if (tab === 'horario')     { loadSchedule(''); loadUsers(); }
+    if (tab === 'reporte')     { loadReport(); loadUsers(); }
   }, [tab, isAdmin]);
 
   // GPS
@@ -580,12 +643,33 @@ export default function AttendancePage() {
   const open = status?.open;
   const inp  = 'border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400';
 
+  // ── Leave request handlers ────────────────────────────────────────────────
+
+  const handleApproveLeave = async (id) => {
+    try { await leaveAPI.approve(id, {}); toast.success('Solicitud aprobada'); loadAllLeaves(); }
+    catch (err) { toast.error(err.response?.data?.message ?? 'Error'); }
+  };
+  const handleRejectLeave = async (id) => {
+    const notes = prompt('Motivo del rechazo (opcional):') ?? '';
+    try { await leaveAPI.reject(id, { notes }); toast.success('Solicitud rechazada'); loadAllLeaves(); }
+    catch (err) { toast.error(err.response?.data?.message ?? 'Error'); }
+  };
+  const handleCancelLeave = async (id) => {
+    if (!confirm('¿Cancelar esta solicitud?')) return;
+    try { await leaveAPI.cancel(id); toast.success('Solicitud cancelada'); loadMyLeaves(); }
+    catch (err) { toast.error(err.response?.data?.message ?? 'Error'); }
+  };
+
   const tabItems = [
     { key: 'mi-asistencia', label: 'Mi asistencia', icon: Clock },
+    ...(!isAdmin ? [{ key: 'mis-permisos', label: 'Mis permisos', icon: CalendarDays }] : []),
     ...(isAdmin ? [
-      { key: 'dashboard',   label: 'Dashboard',          icon: Activity },
-      { key: 'registros',   label: 'Todos los registros',icon: Users    },
-      { key: 'ubicaciones', label: 'Ubicaciones',        icon: MapPin   },
+      { key: 'dashboard',   label: 'Dashboard',     icon: Activity  },
+      { key: 'registros',   label: 'Registros',     icon: Users     },
+      { key: 'permisos',    label: 'Permisos',      icon: CalendarDays },
+      { key: 'reporte',     label: 'Reporte',       icon: FileText  },
+      { key: 'horario',     label: 'Horarios',      icon: Settings  },
+      { key: 'ubicaciones', label: 'Ubicaciones',   icon: MapPin    },
     ] : []),
   ];
 
@@ -948,6 +1032,198 @@ export default function AttendancePage() {
           </div>
         )}
 
+        {/* ── TAB: Mis permisos (usuario) ──────────────────────────────── */}
+        {tab === 'mis-permisos' && !isAdmin && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-500">{myLeaves.length} solicitud{myLeaves.length !== 1 ? 'es' : ''}</p>
+              <button onClick={() => setShowLeaveForm(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
+                <Plus size={14}/> Nueva solicitud
+              </button>
+            </div>
+            {loadingLeaves ? <p className="text-sm text-slate-400 animate-pulse">Cargando...</p>
+              : myLeaves.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-10 text-center">
+                  <CalendarDays size={28} className="text-slate-300 mx-auto mb-2"/>
+                  <p className="text-slate-500 text-sm">Sin solicitudes de permiso.</p>
+                </div>
+              ) : myLeaves.map(l => <LeaveCard key={l.id} leave={l} onCancel={handleCancelLeave}/>)}
+          </div>
+        )}
+
+        {/* ── TAB: Permisos (admin) ─────────────────────────────────────── */}
+        {tab === 'permisos' && isAdmin && (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Usuario</label>
+                <select className={inp} value={leaveFilters.user_id} onChange={e => setLeaveFilters(f => ({...f, user_id: e.target.value}))}>
+                  <option value="">Todos</option>
+                  {usersList.map(u => <option key={u.id} value={u.id}>{u.first_name ? `${u.first_name} ${u.last_name}` : u.username}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Estado</label>
+                <select className={inp} value={leaveFilters.status} onChange={e => setLeaveFilters(f => ({...f, status: e.target.value}))}>
+                  <option value="">Todos</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="aprobado">Aprobado</option>
+                  <option value="rechazado">Rechazado</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipo</label>
+                <select className={inp} value={leaveFilters.type} onChange={e => setLeaveFilters(f => ({...f, type: e.target.value}))}>
+                  <option value="">Todos</option>
+                  <option value="vacaciones">Vacaciones</option>
+                  <option value="enfermedad">Enfermedad</option>
+                  <option value="permiso">Permiso</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <button onClick={loadAllLeaves}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
+                <Filter size={13}/> Filtrar
+              </button>
+            </div>
+
+            {loadingAllL ? <p className="text-sm text-slate-400 animate-pulse">Cargando...</p>
+              : allLeaves.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-10 text-center">
+                  <CalendarDays size={28} className="text-slate-300 mx-auto mb-2"/>
+                  <p className="text-slate-500 text-sm">Sin solicitudes.</p>
+                </div>
+              ) : allLeaves.map(l => (
+                <LeaveCard key={l.id} leave={l} showUser
+                  onApprove={l.status === 'pendiente' ? () => handleApproveLeave(l.id) : null}
+                  onReject={l.status === 'pendiente'  ? () => handleRejectLeave(l.id)  : null}/>
+              ))}
+          </div>
+        )}
+
+        {/* ── TAB: Reporte mensual (admin) ──────────────────────────────── */}
+        {tab === 'reporte' && isAdmin && (
+          <div className="space-y-5">
+            {/* Controls */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Año</label>
+                <input className={inp} type="number" value={reportYear} min={2020} max={2099} onChange={e => setReportYear(+e.target.value)} style={{width:90}}/>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Mes</label>
+                <select className={inp} value={reportMonth} onChange={e => setReportMonth(+e.target.value)}>
+                  {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m,i) => (
+                    <option key={i+1} value={i+1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Usuario</label>
+                <select className={inp} value={reportUser} onChange={e => setReportUser(e.target.value)}>
+                  <option value="">Todos</option>
+                  {usersList.map(u => <option key={u.id} value={u.id}>{u.first_name ? `${u.first_name} ${u.last_name}` : u.username}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={loadReport}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
+                  <FileText size={13}/> Generar
+                </button>
+                {reportData && (
+                  <button onClick={() => exportReportCSV(reportData)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <Download size={13}/> CSV
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {loadingReport ? (
+              <p className="text-sm text-slate-400 animate-pulse">Generando reporte...</p>
+            ) : reportData ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">
+                  Reporte de <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][reportData.month]} {reportData.year}
+                  </span> · {reportData.report.length} empleado{reportData.report.length !== 1 ? 's' : ''}
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-700/50">
+                        {['Empleado','Presentes','Ausentes','Tardanzas','Permisos','Horas trabajadas','Horas extra','GPS violaciones'].map(h => (
+                          <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {reportData.report.map(row => (
+                        <tr key={row.user_id} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-3 py-2.5">
+                            <p className="font-medium text-slate-800 dark:text-slate-100">{row.user_name}</p>
+                            <p className="text-xs text-slate-400">{row.user_email}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-center"><span className="font-semibold text-emerald-600">{row.present_days}</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className={`font-semibold ${row.absent_days > 0 ? 'text-red-500' : 'text-slate-400'}`}>{row.absent_days}</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className={`font-semibold ${row.tardy_days > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{row.tardy_days}</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className="font-semibold text-blue-500">{row.leave_days}</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className="font-mono font-medium text-slate-700 dark:text-slate-200">{row.total_hours}h</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className={`font-mono font-medium ${row.overtime_hours > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>{row.overtime_hours}h</span></td>
+                          <td className="px-3 py-2.5 text-center"><span className={`font-semibold ${row.geo_violations > 0 ? 'text-red-500' : 'text-slate-400'}`}>{row.geo_violations}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-10 text-center">
+                <FileText size={28} className="text-slate-300 mx-auto mb-2"/>
+                <p className="text-slate-500 text-sm">Selecciona año y mes, luego presiona "Generar".</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: Horarios (admin) ─────────────────────────────────────── */}
+        {tab === 'horario' && isAdmin && (
+          <div className="space-y-5">
+            {/* User selector */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Editar horario de</label>
+                <select className={inp} value={selectedSchUser} onChange={e => { setSelectedSchUser(e.target.value); loadSchedule(e.target.value); }}>
+                  <option value="">Horario predeterminado (empresa)</option>
+                  {usersList.map(u => <option key={u.id} value={u.id}>{u.first_name ? `${u.first_name} ${u.last_name}` : u.username}</option>)}
+                </select>
+              </div>
+              {selectedSchUser && (
+                <button onClick={async () => { await scheduleAPI.deleteForUser(selectedSchUser); toast.success('Horario personalizado eliminado'); setSelectedSchUser(''); loadSchedule(''); }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border border-red-200 dark:border-red-800">
+                  <Trash2 size={12}/> Eliminar personalizado
+                </button>
+              )}
+            </div>
+
+            {loadingSchedule ? <p className="text-sm text-slate-400 animate-pulse">Cargando...</p>
+              : schedule && <ScheduleEditor schedule={schedule} saving={savingSchedule}
+                  onSave={async (s) => {
+                    setSavingSchedule(true);
+                    try {
+                      selectedSchUser
+                        ? await scheduleAPI.saveForUser(selectedSchUser, s)
+                        : await scheduleAPI.saveDefault(s);
+                      toast.success('Horario guardado');
+                      loadSchedule(selectedSchUser);
+                    } catch (err) { toast.error(err.response?.data?.message ?? 'Error'); }
+                    finally { setSavingSchedule(false); }
+                  }}/>}
+          </div>
+        )}
+
         {/* ── Modals ───────────────────────────────────────────────────── */}
         {showLocModal && (
           <LocationModal loc={editLoc} onClose={() => setShowLocModal(false)}
@@ -958,7 +1234,258 @@ export default function AttendancePage() {
             onClose={() => setShowRecModal(false)}
             onSaved={() => { setShowRecModal(false); loadRecords(recPage); if (tab==='dashboard') loadToday(); }}/>
         )}
+        {showLeaveForm && (
+          <LeaveForm onClose={() => setShowLeaveForm(false)}
+            onSaved={() => { setShowLeaveForm(false); loadMyLeaves(); }}/>
+        )}
       </div>
     </Layout>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LeaveCard
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LEAVE_TYPE_STYLES = {
+  vacaciones: { label:'Vacaciones', bg:'bg-blue-50 dark:bg-blue-900/20', text:'text-blue-700 dark:text-blue-400', icon: Sun },
+  enfermedad: { label:'Enfermedad', bg:'bg-red-50 dark:bg-red-900/20',   text:'text-red-700 dark:text-red-400',   icon: HeartPulse },
+  permiso:    { label:'Permiso',    bg:'bg-amber-50 dark:bg-amber-900/20',text:'text-amber-700 dark:text-amber-400',icon: Clock },
+  otro:       { label:'Otro',       bg:'bg-slate-50 dark:bg-slate-700',   text:'text-slate-600 dark:text-slate-300',icon: MoreHorizontal },
+};
+const LEAVE_STATUS_STYLES = {
+  pendiente: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+  aprobado:  'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+  rechazado: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+  cancelado: 'bg-slate-100 dark:bg-slate-700 text-slate-500',
+};
+const STATUS_LABELS = { pendiente:'Pendiente', aprobado:'Aprobado', rechazado:'Rechazado', cancelado:'Cancelado' };
+
+function LeaveCard({ leave: l, showUser, onApprove, onReject, onCancel }) {
+  const ts = LEAVE_TYPE_STYLES[l.type] ?? LEAVE_TYPE_STYLES.otro;
+  const TypeIcon = ts.icon;
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className={`p-2.5 rounded-xl ${ts.bg} ${ts.text} flex-shrink-0 self-start`}>
+        <TypeIcon size={16}/>
+      </div>
+      <div className="flex-1 min-w-0">
+        {showUser && l.user_name && <p className="text-xs text-slate-500 mb-0.5">{l.user_name}</p>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-xs font-semibold ${ts.text}`}>{ts.label}</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${LEAVE_STATUS_STYLES[l.status]}`}>
+            {STATUS_LABELS[l.status]}
+          </span>
+        </div>
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5">
+          {new Date(l.start_date + 'T12:00').toLocaleDateString('es-MX', { day:'2-digit', month:'short' })}
+          {l.start_date !== l.end_date && ` → ${new Date(l.end_date + 'T12:00').toLocaleDateString('es-MX', { day:'2-digit', month:'short' })}`}
+          <span className="text-slate-400 font-normal ml-2">({l.days_count} día{l.days_count !== 1 ? 's' : ''})</span>
+        </p>
+        {l.reason && <p className="text-xs text-slate-500 mt-0.5 truncate">{l.reason}</p>}
+        {l.review_notes && <p className="text-xs text-slate-400 mt-0.5 italic">"{l.review_notes}"</p>}
+      </div>
+      <div className="flex gap-2 flex-shrink-0">
+        {onApprove && (
+          <button onClick={onApprove}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
+            <CheckCircle2 size={11}/> Aprobar
+          </button>
+        )}
+        {onReject && (
+          <button onClick={onReject}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
+            <XCircle size={11}/> Rechazar
+          </button>
+        )}
+        {onCancel && l.status === 'pendiente' && (
+          <button onClick={onCancel}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-600 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <X size={11}/> Cancelar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LeaveForm
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LeaveForm({ onClose, onSaved }) {
+  const [form, setForm] = useState({ type:'permiso', start_date:'', end_date:'', reason:'' });
+  const [saving, setSaving] = useState(false);
+  const set = (k,v) => setForm(f => ({...f, [k]:v}));
+  const inp = 'w-full border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400';
+
+  const submit = async e => {
+    e.preventDefault();
+    if (!form.start_date) { toast.error('Selecciona la fecha de inicio'); return; }
+    setSaving(true);
+    try {
+      await leaveAPI.create({ ...form, end_date: form.end_date || form.start_date });
+      toast.success('Solicitud enviada');
+      onSaved();
+    } catch (err) { toast.error(err.response?.data?.message ?? 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <CalendarDays size={16} className="text-indigo-500"/> Nueva solicitud de permiso
+          </h2>
+          <button onClick={onClose}><X size={18} className="text-slate-400"/></button>
+        </div>
+        <form onSubmit={submit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipo</label>
+            <select className={inp} value={form.type} onChange={e => set('type', e.target.value)}>
+              <option value="vacaciones">🏖️ Vacaciones</option>
+              <option value="enfermedad">🏥 Enfermedad</option>
+              <option value="permiso">📋 Permiso personal</option>
+              <option value="otro">📌 Otro</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Desde *</label>
+              <input className={inp} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} required/>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Hasta</label>
+              <input className={inp} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} min={form.start_date}/>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Motivo</label>
+            <textarea className={`${inp} h-24 resize-none`} value={form.reason} onChange={e => set('reason', e.target.value)} placeholder="Describe el motivo de tu solicitud..."/>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancelar</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+              <Save size={14}/> {saving ? 'Enviando...' : 'Enviar solicitud'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ScheduleEditor
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DAYS = [
+  { key:'mon', label:'Lunes'     },
+  { key:'tue', label:'Martes'    },
+  { key:'wed', label:'Miércoles' },
+  { key:'thu', label:'Jueves'    },
+  { key:'fri', label:'Viernes'   },
+  { key:'sat', label:'Sábado'    },
+  { key:'sun', label:'Domingo'   },
+];
+
+function ScheduleEditor({ schedule: initial, saving, onSave }) {
+  const [form, setForm] = useState({ ...initial });
+  const set = (k,v) => setForm(f => ({...f, [k]:v}));
+  const inp = 'border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400';
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">
+            {form.user_id ? 'Horario personalizado' : 'Horario predeterminado de la empresa'}
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">Define las horas de trabajo por día. La tolerancia es el margen antes de marcar tardanza.</p>
+        </div>
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nombre del horario</label>
+            <input className={`${inp} w-full`} value={form.name ?? ''} onChange={e => set('name', e.target.value)} placeholder="Horario estándar"/>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tolerancia (minutos)</label>
+            <input className={`${inp} w-full`} type="number" min={0} max={60} value={form.tolerance_min ?? 10} onChange={e => set('tolerance_min', e.target.value)}/>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-700/50">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Día</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Activo</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Entrada</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Salida</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Horas</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {DAYS.map(({ key, label }) => {
+                const active = !!form[`${key}_active`];
+                const start  = form[`${key}_start`] ?? '';
+                const end    = form[`${key}_end`]   ?? '';
+                const hrs    = active && start && end
+                  ? Math.max(0, (new Date(`2000-01-01T${end}`) - new Date(`2000-01-01T${start}`)) / 3600000).toFixed(1)
+                  : '—';
+                return (
+                  <tr key={key} className={`${active ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/30 opacity-60'} transition-opacity`}>
+                    <td className="px-3 py-2.5 font-medium text-slate-700 dark:text-slate-200">{label}</td>
+                    <td className="px-3 py-2.5">
+                      <button type="button" onClick={() => set(`${key}_active`, active ? 0 : 1)}
+                        className={`relative w-9 h-5 rounded-full transition-colors ${active ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${active ? 'translate-x-4' : 'translate-x-0.5'}`}/>
+                      </button>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <input type="time" className={inp} disabled={!active} value={start} onChange={e => set(`${key}_start`, e.target.value)}/>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <input type="time" className={inp} disabled={!active} value={end} onChange={e => set(`${key}_end`, e.target.value)}/>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 font-mono">{hrs}{hrs !== '—' ? 'h' : ''}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button onClick={() => onSave(form)} disabled={saving}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-60">
+            <Save size={14}/> {saving ? 'Guardando...' : 'Guardar horario'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export report CSV
+// ─────────────────────────────────────────────────────────────────────────────
+
+function exportReportCSV(reportData) {
+  const cols = ['Empleado','Email','Días presentes','Días ausentes','Tardanzas','Días permiso','Horas trabajadas','Horas extra','Violaciones GPS'];
+  const lines = [cols.join(',')];
+  reportData.report.forEach(r => {
+    lines.push([
+      `"${r.user_name}"`, r.user_email, r.present_days, r.absent_days,
+      r.tardy_days, r.leave_days, r.total_hours, r.overtime_hours, r.geo_violations,
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `reporte_asistencia_${reportData.year}_${String(reportData.month).padStart(2,'0')}.csv`;
+  a.click();
 }

@@ -3,12 +3,9 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": [
-        "/Users/edegantea/development/maewalliscorp/gestionproyectosv2/frontend/node_modules/vite/bin/vite.js",
-        "--root",
-        "/Users/edegantea/development/maewalliscorp/gestionproyectosv2/frontend"
-      ],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/edegantea/development/maewalliscorp/gestionproyectosv2/frontend",
       "port": 5173
     }
   ]

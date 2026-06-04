@@ -11,7 +11,7 @@ import {
   CheckCircle2, Clock, TrendingUp, Calendar, Activity, Layers,
   ScrollText, BookOpen, Milestone, ShieldAlert, CheckSquare, Clapperboard, ClipboardList,
   Tag, ChevronRight, User, Sparkles, MessageSquare, BookOpen as WikiIcon,
-  Target, Webhook, Link2, Upload, TrendingDown, GitFork,
+  Target, Webhook, Link2, Upload, TrendingDown, GitFork, Briefcase,
 } from 'lucide-react';
 import SprintList from '../../components/projects/SprintList';
 import BacklogList from '../../components/projects/BacklogList';
@@ -55,6 +55,7 @@ import CustomFieldsView from '../../components/projects/CustomFieldsView';
 import ProjectStatusesView from '../../components/projects/ProjectStatusesView';
 import HillChart from '../../components/projects/HillChart';
 import WhatIfView from '../../components/projects/WhatIfView';
+import BudgetView from '../../components/projects/BudgetView';
 import TaskListView from '../../components/projects/TaskListView';
 import DependencyGraph from '../../components/projects/DependencyGraph';
 
@@ -137,6 +138,7 @@ const ALL_TABS = [
   { id: 'statuses',      label: 'Estados KB',    icon: Layers,        managerOnly: true,  group: 'control'    },
   { id: 'hillchart',     label: 'Hill Chart',    icon: TrendingUp,    managerOnly: false, group: 'control'    },
   { id: 'whatif',        label: 'What-If',       icon: Sparkles,      managerOnly: true,  group: 'control'    },
+  { id: 'budget',        label: 'Presupuesto',   icon: Briefcase,     managerOnly: true,  group: 'control'    },
 ];
 
 /** Ordered group definitions for the tab bar */
@@ -466,6 +468,7 @@ export default function ProjectDetailPage() {
             {tab === 'statuses'      && <ProjectStatusesView projectId={id} isManager={isManager} />}
             {tab === 'hillchart'     && <HillChart           projectId={id} isManager={isManager} />}
             {tab === 'whatif'        && <WhatIfView          projectId={id} isManager={isManager} />}
+            {tab === 'budget'        && <BudgetView          projectId={id} isManager={isManager} />}
           </div>
         </div>
 
