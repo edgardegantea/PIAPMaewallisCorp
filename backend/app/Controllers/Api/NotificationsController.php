@@ -220,6 +220,12 @@ class NotificationsController extends BaseController
         @ini_set('output_buffering', 'off');
         @ini_set('zlib.output_compression', false);
 
+        // CORS — stream() uses raw headers so CorsFilter never runs here
+        $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $allowed = ['https://piap.maewalliscorp.org', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+        header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed, true) ? $origin : $allowed[0]));
+        header('Access-Control-Allow-Credentials: true');
+
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
         header('X-Accel-Buffering: no'); // nginx: disable proxy buffering
