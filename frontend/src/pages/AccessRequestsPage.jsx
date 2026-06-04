@@ -80,8 +80,8 @@ function NewRequestModal({ onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[95vh] overflow-y-auto border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
           <h2 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <ShieldCheck size={16} className="text-indigo-500"/> Nueva solicitud de acceso
@@ -163,8 +163,8 @@ function ReviewModal({ request, action, onClose, onSaved }) {
   const isApprove = action === 'approve';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[95vh] overflow-y-auto border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
           <h2 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             {isApprove
@@ -341,7 +341,7 @@ export default function AccessRequestsPage() {
 
   return (
     <Layout>
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -382,7 +382,7 @@ export default function AccessRequestsPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-0.5 border-b border-slate-200 dark:border-slate-700">
+        <div className="tabs-scroll">
           {tabItems.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors -mb-px

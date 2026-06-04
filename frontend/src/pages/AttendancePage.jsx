@@ -166,7 +166,7 @@ function LocationModal({ loc, onClose, onSaved }) {
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg my-4 border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2">
@@ -269,8 +269,8 @@ function RecordModal({ record, users, locations, onClose, onSaved }) {
   const inp = 'w-full border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[95vh] overflow-y-auto border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-indigo-500"/>
@@ -675,7 +675,7 @@ export default function AttendancePage() {
 
   return (
     <Layout>
-      <div className="px-6 py-6 space-y-6 min-h-full">
+      <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 min-h-full">
 
         {/* ── Header ───────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -695,7 +695,7 @@ export default function AttendancePage() {
         </div>
 
         {/* ── Tabs ─────────────────────────────────────────────────────── */}
-        <div className="flex gap-0.5 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+        <div className="tabs-scroll">
           {tabItems.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors -mb-px
@@ -1056,7 +1056,7 @@ export default function AttendancePage() {
         {tab === 'permisos' && isAdmin && (
           <div className="space-y-4">
             {/* Filters */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-4 sm:px-6 py-4 flex flex-wrap gap-3 items-end">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Usuario</label>
                 <select className={inp} value={leaveFilters.user_id} onChange={e => setLeaveFilters(f => ({...f, user_id: e.target.value}))}>
@@ -1107,7 +1107,7 @@ export default function AttendancePage() {
         {tab === 'reporte' && isAdmin && (
           <div className="space-y-5">
             {/* Controls */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-4 sm:px-6 py-4 flex flex-wrap gap-3 items-end">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Año</label>
                 <input className={inp} type="number" value={reportYear} min={2020} max={2099} onChange={e => setReportYear(+e.target.value)} style={{width:90}}/>
@@ -1192,7 +1192,7 @@ export default function AttendancePage() {
         {tab === 'horario' && isAdmin && (
           <div className="space-y-5">
             {/* User selector */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-6 py-4 flex flex-wrap gap-3 items-end">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 px-4 sm:px-6 py-4 flex flex-wrap gap-3 items-end">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Editar horario de</label>
                 <select className={inp} value={selectedSchUser} onChange={e => { setSelectedSchUser(e.target.value); loadSchedule(e.target.value); }}>
@@ -1332,8 +1332,8 @@ function LeaveForm({ onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[95vh] overflow-y-auto border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
           <h2 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <CalendarDays size={16} className="text-indigo-500"/> Nueva solicitud de permiso

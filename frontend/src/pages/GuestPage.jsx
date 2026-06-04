@@ -136,17 +136,17 @@ export default function GuestPage() {
     <div className="min-h-screen bg-slate-100">
 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center gap-2 sm:gap-3 overflow-hidden">
         <Shield size={16} className="text-indigo-500 flex-shrink-0"/>
-        <span className="text-sm font-semibold text-slate-700">{project.name}</span>
-        <span className="text-xs text-slate-400">· Portal de cliente — solo lectura</span>
-        {invite?.label && <span className="text-xs text-slate-400 ml-auto">{invite.label}</span>}
+        <span className="text-sm font-semibold text-slate-700 truncate">{project.name}</span>
+        <span className="text-xs text-slate-400 hidden sm:inline">· Portal de cliente</span>
+        {invite?.label && <span className="text-xs text-slate-400 ml-auto flex-shrink-0">{invite.label}</span>}
         {invite?.expires_at && (
           <span className="text-xs text-amber-500">Expira: {fmtDate(invite.expires_at)}</span>
         )}
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-5">
 
         {/* ── Project header ───────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6">

@@ -397,23 +397,24 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-12 flex items-center gap-3 px-3 sm:px-4 flex-shrink-0">
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-12 flex items-center gap-2 px-3 sm:px-4 flex-shrink-0">
 
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(true)}
-            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white p-1 rounded lg:hidden flex-shrink-0"
+            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white p-2 rounded-lg lg:hidden flex-shrink-0"
           >
             <Menu size={20} />
           </button>
 
-          {/* Global search — opens Command Palette */}
+          {/* Mobile: page title / Desktop: search bar */}
           <button
             onClick={() => setPaletteOpen(true)}
             className="flex items-center gap-2 flex-1 max-w-md px-3 py-1.5 text-sm text-slate-400 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:border-indigo-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors text-left"
           >
             <Search size={14} className="flex-shrink-0" />
-            <span className="flex-1">Buscar…</span>
+            <span className="flex-1 hidden sm:block">Buscar…</span>
+            <span className="flex-1 sm:hidden text-xs">Buscar…</span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-slate-400">
               {isMac ? '⌘K' : 'Ctrl+K'}
             </kbd>
@@ -629,14 +630,35 @@ export default function Layout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 relative">
+        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 relative pb-16 lg:pb-0">
           {children}
+
+          {/* ── Bottom navigation bar (mobile only) ───────────────── */}
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center safe-area-pb">
+            {[
+              { to: '/dashboard',  icon: LayoutDashboard, label: 'Inicio'     },
+              { to: '/projects',   icon: FolderKanban,    label: 'Proyectos'  },
+              { to: '/attendance', icon: MapPin,          label: 'Asistencia' },
+              { to: '/my-tasks',   icon: ListTodo,        label: 'Tareas'     },
+              { to: '/profile',    icon: User,            label: 'Perfil'     },
+            ].map(({ to, icon: Icon, label }) => {
+              const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to));
+              return (
+                <Link key={to} to={to}
+                  className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[52px]
+                    ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                  <Icon size={20} />
+                  <span className="text-[10px] font-medium leading-none">{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
           {/* ── Floating active-timer chip ─────────────────────────── */}
           {activeTimer && (
-            <div className="fixed bottom-5 right-5 z-40 flex items-center gap-3
+            <div className="fixed bottom-16 lg:bottom-5 right-3 sm:right-5 z-40 flex items-center gap-2 sm:gap-3
                             bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700
-                            shadow-lg rounded-2xl px-4 py-2.5">
+                            shadow-lg rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
               <div className="min-w-0">
                 <p className="font-mono text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums leading-none">

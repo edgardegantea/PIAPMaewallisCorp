@@ -8,6 +8,49 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* ── Safe area for bottom nav (iOS notch / home indicator) ─── */
+.safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ── Page container helpers ───────────────────────────────────── */
+.page-container { @apply px-3 sm:px-6 py-4 sm:py-6; }
+
+/* ── Responsive table wrapper ─────────────────────────────────── */
+.table-scroll { @apply overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0; }
+.table-scroll table { @apply min-w-full; }
+
+/* ── Card on mobile = no border-radius on edges ──────────────── */
+@media (max-width: 639px) {
+  .mobile-card-flush {
+    @apply rounded-none border-l-0 border-r-0 -mx-3;
+  }
+}
+
+/* ── Modal full-screen on mobile ─────────────────────────────── */
+.modal-mobile {
+  @apply fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4;
+}
+.modal-mobile > div {
+  @apply w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[95vh] overflow-y-auto;
+}
+
+/* ── Mobile-friendly inputs and buttons ───────────────────────── */
+@media (max-width: 639px) {
+  /* Bigger touch targets */
+  button, a, [role="button"] { min-height: 36px; }
+  select, input, textarea    { font-size: 16px !important; } /* prevent zoom on iOS */
+}
+
+/* ── Prevent horizontal overflow on very small screens ───────── */
+.page-container, main { overflow-x: hidden; }
+
+/* ── Scrollable tab bars ──────────────────────────────────────── */
+.tabs-scroll {
+  @apply flex overflow-x-auto gap-0.5 border-b border-slate-200 dark:border-slate-700;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs-scroll::-webkit-scrollbar { display: none; }
+
 /* Thin scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
