@@ -50,8 +50,8 @@ function ReactivateModal({ task, onClose, onReactivated }) {
   const dl = deadlineInfo(task.due_date, task.due_time);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm max-h-[95vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2 text-amber-600">
             <RefreshCw size={16} />
@@ -291,33 +291,29 @@ export default function KanbanBoard({ projectId, isManager = true }) {
   return (
     <div>
       {/* Filters bar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-600">Sprint:</label>
-          <select value={sprintId} onChange={(e) => setSprintId(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            {sprints.map((s) => <option key={s.id} value={s.id}>Sprint {s.number}: {s.name}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Flag size={13} className="text-slate-400" />
-          <label className="text-sm font-medium text-slate-600">Prioridad:</label>
-          <select value={priorityFilter} onChange={(e) => setPriority(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Todas</option>
-            {PRIORITIES.filter(Boolean).map((p) => (
-              <option key={p} value={p}>{PRIORITY_STYLES[p].label}</option>
-            ))}
-          </select>
-        </div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {/* Sprint selector */}
+        <select value={sprintId} onChange={(e) => setSprintId(e.target.value)}
+          className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-slate-100 max-w-[140px] sm:max-w-none">
+          {sprints.map((s) => <option key={s.id} value={s.id}>Sprint {s.number}{s.name ? `: ${s.name}` : ''}</option>)}
+        </select>
+        {/* Priority filter */}
+        <select value={priorityFilter} onChange={(e) => setPriority(e.target.value)}
+          className="border border-slate-300 dark:border-slate-600 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-slate-100">
+          <option value="">Prioridad</option>
+          {PRIORITIES.filter(Boolean).map((p) => (
+            <option key={p} value={p}>{PRIORITY_STYLES[p].label}</option>
+          ))}
+        </select>
+        {/* My tasks toggle */}
         <button
           onClick={() => setOnlyMine((v) => !v)}
           title={onlyMine ? 'Ver todas las tareas' : 'Ver solo mis tareas'}
-          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors
+          className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors
             ${onlyMine
               ? 'bg-indigo-600 text-white border-indigo-600'
-              : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
-          <User size={13} /> {onlyMine ? 'Mis tareas' : 'Todas'}
+              : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+          <User size={12} /> <span className="hidden sm:inline">{onlyMine ? 'Mis tareas' : 'Todas'}</span>
         </button>
         <div className="ml-auto flex items-center gap-2">
           {filteredTasks.length > 0 && (
@@ -390,8 +386,8 @@ export default function KanbanBoard({ projectId, isManager = true }) {
 
       {/* ── LIST VIEW ──────────────────────────────────────── */}
       {viewMode === 'list' && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                 <th className="px-3 py-2.5 w-8">
@@ -541,11 +537,14 @@ export default function KanbanBoard({ projectId, isManager = true }) {
                   <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded-full">{laneTasks.length}</span>
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 </div>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-1"
+                  style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex gap-3 sm:grid sm:grid-cols-4 min-w-max sm:min-w-0">
                   {COLUMNS.map(col => {
                     const colTasks = laneTasks.filter(t => t.status === col.id);
                     return (
                       <div key={col.id}
+                        style={{ minWidth: '240px' }}
                         onDragEnter={e => handleDragEnter(e, col.id)}
                         onDragLeave={e => handleDragLeave(e, col.id)}
                         onDragOver={handleDragOver}
@@ -567,13 +566,32 @@ export default function KanbanBoard({ projectId, isManager = true }) {
                     );
                   })}
                 </div>
+                </div>
               </div>
             ))}
           </div>
         );
       })()}
 
-      {viewMode === 'board' && swimlaneBy === 'none' && <div className="grid grid-cols-4 gap-3">
+      {viewMode === 'board' && swimlaneBy === 'none' && (
+      <>
+      {/* Mobile column summary chips */}
+      <div className="flex gap-2 mb-3 sm:hidden overflow-x-auto pb-1 -mx-1 px-1"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        {COLUMNS.map(col => {
+          const count = filteredTasks.filter(t => t.status === col.id).length;
+          return (
+            <div key={col.id} className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${col.header}`}>
+              <span>{col.label}</span>
+              <span className="bg-white/60 rounded-full px-1.5 py-0.5 font-bold">{count}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-slate-400 mb-2 sm:hidden text-center">← Desliza para ver todas las columnas →</p>
+      <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-2"
+        style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex gap-3 sm:grid sm:grid-cols-4 min-w-max sm:min-w-0">
         {COLUMNS.map((col) => {
           const { id, label, color, bg, header, drop } = col;
           const colTasks  = filteredTasks.filter((t) => t.status === id);
@@ -583,6 +601,7 @@ export default function KanbanBoard({ projectId, isManager = true }) {
           return (
             <div
               key={id}
+              style={{ minWidth: '260px' }}
               onDragEnter={(e) => handleDragEnter(e, id)}
               onDragLeave={(e) => handleDragLeave(e, id)}
               onDragOver={handleDragOver}
@@ -756,7 +775,9 @@ export default function KanbanBoard({ projectId, isManager = true }) {
             </div>
           );
         })}
-      </div>}
+      </div>
+      </div>
+      </>)}
       {/* end swimlane === none */}
 
       {selectedTask && (
