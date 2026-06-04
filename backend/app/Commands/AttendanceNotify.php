@@ -14,7 +14,7 @@ use App\Libraries\NotificationService;
  *
  * Usage:   php spark attendance:notify
  * Cron:    Add to crontab to run every 30 min on workdays:
- *   */30 8-12 * * 1-5 php /path/to/spark attendance:notify
+ *   * /30 8-12 * * 1-5 php /path/to/spark attendance:notify
  */
 class AttendanceNotify extends BaseCommand
 {
