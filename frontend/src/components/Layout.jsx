@@ -11,7 +11,7 @@ import {
   Menu, X, ChevronRight, BarChart2, Building2, Shield, Lock,
   Bell, AlertTriangle, Clock, Flag, Search, CheckSquare,
   Sun, Moon, ListTodo, CalendarDays, Square, LayoutTemplate, ScrollText, Briefcase,
-  Target, KeyRound, MapPin,
+  Target, KeyRound, MapPin, ShieldCheck,
 } from 'lucide-react';
 import CommandPalette from './CommandPalette';
 
@@ -82,8 +82,10 @@ export default function Layout({ children }) {
       )
     : [];
 
-  const isMac  = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  const isMac        = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const isAdmin      = user?.role === 'ADMIN';
+  const isDirector   = user?.role === 'DIRECTOR';
+  const isManager    = isAdmin || isDirector;
   const isTeamMember = user?.role === 'TEAM_MEMBER';
 
   // Close mobile sidebar on route change
@@ -269,11 +271,14 @@ export default function Layout({ children }) {
       { to: '/okrs',       icon: Target,         label: 'OKRs'       },
     ])] : []),
     ...(isAdmin ? [navSection('Administración', [
-      { to: '/users',            icon: Shield,     label: 'Usuarios'   },
-      { to: '/permissions',      icon: Lock,       label: 'Permisos'   },
-      { to: '/roles',            icon: KeyRound,   label: 'Roles'      },
-      { to: '/company-settings', icon: Building2,  label: 'Empresa'    },
-      { to: '/audit',            icon: ScrollText, label: 'Auditoría'  },
+      { to: '/users',            icon: Shield,       label: 'Usuarios'     },
+      { to: '/permissions',      icon: Lock,         label: 'Permisos'     },
+      { to: '/roles',            icon: KeyRound,     label: 'Roles'        },
+      { to: '/company-settings', icon: Building2,    label: 'Empresa'      },
+      { to: '/audit',            icon: ScrollText,   label: 'Auditoría'    },
+      { to: '/access-requests',  icon: ShieldCheck,  label: 'Solicitudes'  },
+    ])] : isDirector ? [navSection('Gestión', [
+      { to: '/access-requests',  icon: ShieldCheck,  label: 'Solicitudes de acceso' },
     ])] : isTeamMember ? [] : [navSection('Configuración', [
       { to: '/company-settings', icon: Building2, label: 'Empresa' },
     ])]),

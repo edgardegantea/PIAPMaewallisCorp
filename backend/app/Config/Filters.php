@@ -5,6 +5,7 @@ namespace Config;
 use App\Filters\AdminFilter;
 use App\Filters\AuthFilter;
 use App\Filters\CorsFilter;
+use App\Filters\ManagerFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\CSRF;
 use CodeIgniter\Filters\DebugToolbar;
@@ -27,6 +28,7 @@ class Filters extends BaseFilters
         'cors'          => CorsFilter::class,
         'auth'          => AuthFilter::class,
         'admin'         => AdminFilter::class,
+        'manager'       => ManagerFilter::class,
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,

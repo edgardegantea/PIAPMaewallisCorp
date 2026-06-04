@@ -532,6 +532,12 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
     $routes->post('leave-requests',         'Api\LeaveRequestsController::create');
     $routes->delete('leave-requests/(:num)','Api\LeaveRequestsController::cancel/$1');
 
+    // ── Solicitudes de acceso (usuario) ──────────────────────────────────
+    $routes->get('access-requests/my',       'Api\AccessRequestsController::my');
+    $routes->get('access-requests/check',    'Api\AccessRequestsController::check');
+    $routes->post('access-requests',         'Api\AccessRequestsController::create');
+    $routes->delete('access-requests/(:num)','Api\AccessRequestsController::cancel/$1');
+
     // ── Presupuesto de proyecto ───────────────────────────────────────────
     $routes->get('projects/(:num)/budget',  'Api\BudgetController::index/$1');
     $routes->post('projects/(:num)/budget', 'Api\BudgetController::create/$1');
@@ -557,7 +563,41 @@ $routes->get('api/attachments/(:num)/download',         'Api\TaskAttachmentsCont
 $routes->get('api/technicaldocs/(:num)/download',       'Api\TechnicalDocsController::download/$1');
 $routes->get('api/tech-doc-versions/(:num)/download',   'Api\TechDocVersionsController::download/$1');
 
-// Rutas ADMIN (auth + admin filter)
+// ── Rutas MANAGER (auth + manager filter — ADMIN y DIRECTOR) ─────────────────
+$routes->group('api/admin', ['filter' => ['auth', 'manager']], function ($routes) {
+
+    // ── Attendance ────────────────────────────────────────────────────────
+    // Ubicaciones
+    $routes->post('attendance/locations',             'Api\AttendanceController::createLocation');
+    $routes->patch('attendance/locations/(:num)',     'Api\AttendanceController::updateLocation/$1');
+    $routes->delete('attendance/locations/(:num)',    'Api\AttendanceController::deleteLocation/$1');
+    // Registros
+    $routes->get('attendance/records',               'Api\AttendanceController::allRecords');
+    $routes->post('attendance/records',              'Api\AttendanceController::createRecord');
+    $routes->patch('attendance/records/(:num)',       'Api\AttendanceController::updateRecord/$1');
+    $routes->delete('attendance/records/(:num)',      'Api\AttendanceController::deleteRecord/$1');
+    // Dashboard + reporte
+    $routes->get('attendance/today',                 'Api\AttendanceController::today');
+    $routes->get('attendance/users-list',            'Api\AttendanceController::usersList');
+    $routes->get('attendance/report',                'Api\WorkScheduleController::report');
+    // Horarios
+    $routes->get('work-schedule',                    'Api\WorkScheduleController::getDefault');
+    $routes->put('work-schedule',                    'Api\WorkScheduleController::saveDefault');
+    $routes->get('work-schedule/user/(:num)',         'Api\WorkScheduleController::getForUser/$1');
+    $routes->put('work-schedule/user/(:num)',         'Api\WorkScheduleController::saveForUser/$1');
+    $routes->delete('work-schedule/user/(:num)',      'Api\WorkScheduleController::deleteForUser/$1');
+    // Solicitudes de permiso (aprobar/rechazar)
+    $routes->get('leave-requests',                   'Api\LeaveRequestsController::all');
+    $routes->patch('leave-requests/(:num)/approve',  'Api\LeaveRequestsController::approve/$1');
+    $routes->patch('leave-requests/(:num)/reject',   'Api\LeaveRequestsController::reject/$1');
+    // Solicitudes de acceso
+    $routes->get('access-requests',                  'Api\AccessRequestsController::all');
+    $routes->get('access-requests/pending',          'Api\AccessRequestsController::pending');
+    $routes->patch('access-requests/(:num)/approve', 'Api\AccessRequestsController::approve/$1');
+    $routes->patch('access-requests/(:num)/reject',  'Api\AccessRequestsController::reject/$1');
+});
+
+// ── Rutas ADMIN (auth + admin filter — SOLO ADMIN) ───────────────────────────
 $routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) {
     // Project bulk import
     $routes->post('projects/import/csv',            'Api\ProjectImportController::import');
@@ -574,30 +614,4 @@ $routes->group('api/admin', ['filter' => ['auth', 'admin']], function ($routes) 
     $routes->delete('users/(:num)/permanent',       'Api\UsersController::destroy/$1');
     // Permissions panel
     $routes->get('teams',                           'Api\MembersController::allTeams');
-
-    // ── Attendance (solo admin gestiona) ──────────────────────────────────
-    // Ubicaciones
-    $routes->post('attendance/locations',             'Api\AttendanceController::createLocation');
-    $routes->patch('attendance/locations/(:num)',     'Api\AttendanceController::updateLocation/$1');
-    $routes->delete('attendance/locations/(:num)',    'Api\AttendanceController::deleteLocation/$1');
-    // Registros
-    $routes->get('attendance/records',               'Api\AttendanceController::allRecords');
-    $routes->post('attendance/records',              'Api\AttendanceController::createRecord');
-    $routes->patch('attendance/records/(:num)',       'Api\AttendanceController::updateRecord/$1');
-    $routes->delete('attendance/records/(:num)',      'Api\AttendanceController::deleteRecord/$1');
-    // Dashboard
-    $routes->get('attendance/today',                 'Api\AttendanceController::today');
-    $routes->get('attendance/users-list',            'Api\AttendanceController::usersList');
-    // Horarios
-    $routes->get('work-schedule',                    'Api\WorkScheduleController::getDefault');
-    $routes->put('work-schedule',                    'Api\WorkScheduleController::saveDefault');
-    $routes->get('work-schedule/user/(:num)',         'Api\WorkScheduleController::getForUser/$1');
-    $routes->put('work-schedule/user/(:num)',         'Api\WorkScheduleController::saveForUser/$1');
-    $routes->delete('work-schedule/user/(:num)',      'Api\WorkScheduleController::deleteForUser/$1');
-    // Reporte mensual
-    $routes->get('attendance/report',                'Api\WorkScheduleController::report');
-    // Permisos (admin)
-    $routes->get('leave-requests',                   'Api\LeaveRequestsController::all');
-    $routes->patch('leave-requests/(:num)/approve',  'Api\LeaveRequestsController::approve/$1');
-    $routes->patch('leave-requests/(:num)/reject',   'Api\LeaveRequestsController::reject/$1');
 });
