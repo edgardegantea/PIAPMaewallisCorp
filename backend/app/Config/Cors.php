@@ -35,7 +35,7 @@ class Cors extends BaseConfig
          *   - ['https://www.example.com']
          */
         'allowedOrigins' => [
-            'https://piap.maewalliscorp.org',
+            'https://gp.maewalliscorp.org',
             'http://localhost:5173',
             'http://localhost:5174',
             'http://localhost:3000',
